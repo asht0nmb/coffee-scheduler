@@ -75,11 +75,14 @@ app.get('/api/auth/google/callback', async (req, res) => {
     console.log('Attempting to exchange code for tokens...');
     
     // Use the correct method for getting tokens
-    const { tokens } = await oauth2Client.getAccessToken(code);
-    
-    if (!tokens) {
+    const tokenResponse = await oauth2Client.getAccessToken(code);
+    console.log('Full token response:', tokenResponse);
+
+    if (!tokenResponse || !tokenResponse.tokens) {
       throw new Error('No tokens received from Google');
     }
+
+    const tokens = tokenResponse.tokens;
     
     console.log('Tokens received:', Object.keys(tokens));
     oauth2Client.setCredentials(tokens);
