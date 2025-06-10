@@ -49,8 +49,8 @@ app.get('/api/auth/google', (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent',  // This forces Google to show consent screen every time
-    include_granted_scopes: true
+    prompt: 'consent',
+    response_type: 'code'  // Explicitly specify response type
   });
   
   console.log('Redirecting to Google OAuth URL');
