@@ -83,7 +83,11 @@ app.get('/api/auth/google/callback', async (req, res) => {
       throw new Error('No tokens received from Google');
     }
 
-    const tokens = tokenResponse.tokens;
+    // Exchange code for tokens with explicit configuration
+    const { tokens } = await oauth2Client.getToken({
+      code: code,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    });
     
     console.log('Tokens received:', Object.keys(tokens));
     oauth2Client.setCredentials(tokens);
