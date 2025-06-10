@@ -84,10 +84,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     }
 
     // Exchange code for tokens with explicit configuration
-    const { tokens } = await oauth2Client.getToken({
-      code: code,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI
-    });
+    const { tokens } = await oauth2Client.getToken(code);
     
     console.log('Tokens received:', Object.keys(tokens));
     oauth2Client.setCredentials(tokens);
