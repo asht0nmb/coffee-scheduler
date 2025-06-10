@@ -40,7 +40,8 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     message: 'Coffee Scheduler API is running!', 
     timestamp: new Date().toISOString(),
-    googleAuth: !!process.env.GOOGLE_CLIENT_ID
+    googleAuth: !!process.env.GOOGLE_CLIENT_ID,
+    redirectUri: process.env.GOOGLE_REDIRECT_URI
   });
 });
 
@@ -49,11 +50,11 @@ app.get('/api/auth/google', (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent',
-    response_type: 'code'  // Explicitly specify response type
+    prompt: 'consent'
   });
   
-  console.log('Redirecting to Google OAuth URL');
+  console.log('Generated auth URL:', authUrl);
+  console.log('Redirect URI configured:', process.env.GOOGLE_REDIRECT_URI);
   res.redirect(authUrl);
 });
 
