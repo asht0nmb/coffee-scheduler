@@ -22,12 +22,31 @@ app.use(session({
 app.use(cors());
 app.use(express.json());
 
-// Google OAuth setup
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+// Google OAuth setup - explicit configuration
+const oauth2Client = new google.auth.OAuth2({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: process.env.GOOGLE_REDIRECT_URI
+});
+
+// Ensure no PKCE is used
+oauth2Client.generateAuthUrl = function(opts) {
+  // Remove any PKCE-related parameters
+  delete opts.code_challenge;
+  delete opts.code_challenge_method;
+  return google.auth.OAuth2.prototype.generateAuthUrl.call(this, opts);
+};
+
+// Debug googleapis requests
+const originalRequest = oauth2Client.transporter.request;
+oauth2Client.transporter.request = function(opts) {
+  console.log('=== OAuth Request Debug ===');
+  console.log('URL:', opts.url);
+  console.log('Method:', opts.method);
+  console.log('Data:', opts.data);
+  console.log('========================');
+  return originalRequest.apply(this, arguments);
+};
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
