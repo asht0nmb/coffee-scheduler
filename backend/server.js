@@ -75,16 +75,14 @@ app.get('/api/auth/google/callback', async (req, res) => {
   try {
     console.log('Attempting to exchange code for tokens...');
     
-    // Use the correct method for getting tokens
-    const tokenResponse = await oauth2Client.getToken(code);
-    console.log('Full token response:', tokenResponse);
-
-    if (!tokenResponse || !tokenResponse.tokens) {
-      throw new Error('No tokens received from Google');
-    }
-
     // Exchange code for tokens with explicit configuration
     const { tokens } = await oauth2Client.getToken(code);
+    console.log('Tokens received:', Object.keys(tokens));
+
+
+    if (!tokens) {
+      throw new Error('No tokens received from Google');
+    }
     
     console.log('Tokens received:', Object.keys(tokens));
     oauth2Client.setCredentials(tokens);
@@ -120,6 +118,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     res.status(500).send(`
       <h1>❌ Authentication Failed</h1>
       <p>Error: ${error.message}</p>
+      <p>Details: ${error.response?.data?.error_description || 'Unknown error'}</p>
       <p><a href="/api/auth/google">Try Again</a></p>
     `);
   }
