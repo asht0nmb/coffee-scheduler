@@ -49,24 +49,45 @@ app.get('/api/auth/google', (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent'
+    prompt: 'consent',  // This forces Google to show consent screen every time
+    include_granted_scopes: true
   });
   
+  console.log('Redirecting to Google OAuth URL');
   res.redirect(authUrl);
 });
 
-// Handle OAuth callback
+// Handle OAuth callback - FIXED VERSION
 app.get('/api/auth/google/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, error } = req.query;
+  
+  console.log('Callback received - Code:', code ? 'YES' : 'NO', 'Error:', error);
+  
+  if (error) {
+    return res.status(400).send(`OAuth error: ${error}`);
+  }
+  
+  if (!code) {
+    return res.status(400).send('No authorization code received');
+  }
   
   try {
+    console.log('Attempting to exchange code for tokens...');
+    
+    // Use the correct method for getting tokens
     const { tokens } = await oauth2Client.getAccessToken(code);
+    
+    if (!tokens) {
+      throw new Error('No tokens received from Google');
+    }
+    
+    console.log('Tokens received:', Object.keys(tokens));
     oauth2Client.setCredentials(tokens);
     
     // Store tokens in session
     req.session.tokens = tokens;
     
-    // Get user info
+    // Test if we can get user info
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const { data: userInfo } = await oauth2.userinfo.get();
     
@@ -85,8 +106,17 @@ app.get('/api/auth/google/callback', async (req, res) => {
       <p><a href="/api/auth/status">Check Auth Status</a></p>
     `);
   } catch (error) {
-    console.error('OAuth callback error:', error);
-    res.status(500).send('Authentication failed');
+    console.error('OAuth error details:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    
+    res.status(500).send(`
+      <h1>❌ Authentication Failed</h1>
+      <p>Error: ${error.message}</p>
+      <p><a href="/api/auth/google">Try Again</a></p>
+    `);
   }
 });
 
