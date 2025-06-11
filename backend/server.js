@@ -264,14 +264,9 @@ app.get('/api/auth/status', (req, res) => {
   }
 });
 
-// Test calendar access
-app.get('/api/calendar/test', async (req, res) => {
-  if (!req.session.tokens) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  
+// Test calendar access - with authentication middleware
+app.get('/api/calendar/test', ensureAuthenticated, async (req, res) => {
   try {
-    oauth2Client.setCredentials(req.session.tokens);
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     
     const response = await calendar.calendarList.list();
