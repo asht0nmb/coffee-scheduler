@@ -48,6 +48,30 @@ oauth2Client.transporter.request = function(opts) {
   return originalRequest.apply(this, arguments);
 };
 
+
+// FIX: Override getToken to remove code_verifier
+const originalGetToken = oauth2Client.getToken;
+oauth2Client.getToken = async function(codeOrOptions) {
+  // Intercept the request to remove code_verifier
+  const originalTransporterRequest = this.transporter.request;
+  this.transporter.request = function(opts) {
+    if (opts.data && opts.data instanceof URLSearchParams) {
+      // Remove the problematic code_verifier parameter
+      opts.data.delete('code_verifier');
+      console.log('Removed code_verifier from request');
+    }
+    return originalTransporterRequest.apply(this, arguments);
+  };
+  
+  // Call the original method
+  const result = await originalGetToken.apply(this, arguments);
+  
+  // Restore the original transporter
+  this.transporter.request = originalTransporterRequest;
+  
+  return result;
+};
+
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/userinfo.profile',
