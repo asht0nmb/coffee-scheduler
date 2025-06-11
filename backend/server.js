@@ -23,6 +23,42 @@ app.use(session({
   proxy: process.env.NODE_ENV === 'production' // Trust Railway's proxy
 }));
 
+// Token refresh helper
+async function refreshAccessToken(oauth2Client, refreshToken) {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const { tokens } = await oauth2Client.refreshAccessToken();
+    return tokens;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    throw error;
+  }
+}
+
+// Middleware to check and refresh tokens
+async function ensureAuthenticated(req, res, next) {
+  if (!req.session.tokens) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  // Check if access token is expired
+  const now = new Date().getTime();
+  if (req.session.tokens.expiry_date && req.session.tokens.expiry_date <= now) {
+    console.log('Access token expired, refreshing...');
+    try {
+      const newTokens = await refreshAccessToken(oauth2Client, req.session.tokens.refresh_token);
+      req.session.tokens = newTokens;
+      console.log('Token refreshed successfully');
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return res.status(401).json({ error: 'Token refresh failed' });
+    }
+  }
+  
+  oauth2Client.setCredentials(req.session.tokens);
+  next();
+}
+
 // Session debugging middleware
 app.use((req, res, next) => {
   console.log('=== Session Debug ===');
