@@ -7,19 +7,50 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Session configuration
+// Session configuration - PRODUCTION READY
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true, // Prevent XSS attacks
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Required for cross-origin
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    domain: process.env.COOKIE_DOMAIN || undefined // Set if needed for subdomains
+  },
+  name: 'sessionId', // Change from default 'connect.sid'
+  proxy: process.env.NODE_ENV === 'production' // Trust Railway's proxy
 }));
 
 // Middleware
-app.use(cors());
+// CORS configuration - MUST be before session middleware
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, validate against allowed origins
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'http://localhost:3000', // Your local frontend
+      'http://localhost:5173', // Vite dev server
+      // Add any other allowed origins
+    ].filter(Boolean); // Remove undefined values
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // CRITICAL: Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Google OAuth setup - explicit configuration
