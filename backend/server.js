@@ -264,6 +264,20 @@ app.get('/api/auth/status', (req, res) => {
   }
 });
 
+//Session test endpoint for debugging
+app.get('/api/session/test', (req, res) => {
+  res.json({
+    sessionID: req.sessionID,
+    hasSession: !!req.session,
+    sessionData: {
+      hasTokens: !!req.session.tokens,
+      hasUser: !!req.session.user,
+      created: req.session.cookie._expires
+    },
+    cookies: req.headers.cookie
+  });
+});
+
 // Test calendar access - with authentication middleware
 app.get('/api/calendar/test', ensureAuthenticated, async (req, res) => {
   try {
