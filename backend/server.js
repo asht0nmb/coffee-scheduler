@@ -23,6 +23,23 @@ app.use(session({
   proxy: process.env.NODE_ENV === 'production' // Trust Railway's proxy
 }));
 
+// Session debugging middleware
+app.use((req, res, next) => {
+  console.log('=== Session Debug ===');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session:', {
+    hasTokens: !!req.session.tokens,
+    hasUser: !!req.session.user,
+    cookie: req.session.cookie
+  });
+  console.log('Headers:', {
+    cookie: req.headers.cookie,
+    origin: req.headers.origin
+  });
+  console.log('===================');
+  next();
+});
+
 // Middleware
 // CORS configuration - MUST be before session middleware
 const corsOptions = {
