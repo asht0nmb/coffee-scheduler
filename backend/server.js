@@ -868,6 +868,316 @@ app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) 
   }
 });
 
+// Analyze slots for optimal scheduling
+app.post('/api/calendar/analyze-slots', ensureAuthenticated, async (req, res) => {
+  try {
+    const {
+      rawAvailability,    // From our raw-availability endpoint
+      contactTimezone,    // Contact's timezone
+      workingHours = { start: 9, end: 17.5 }, // 9am-5:30pm default
+      timePreferences = ['morning', 'afternoon'], // Preferred times
+      meetingDuration = 60, // Minutes
+      daysToGenerate = 5   // Number of days to look ahead
+    } = req.body;
+
+    // Validation
+    if (!rawAvailability || !contactTimezone) {
+      return res.status(400).json({
+        error: 'rawAvailability and contactTimezone are required',
+        example: {
+          rawAvailability: { busyTimes: [], dateRange: {} },
+          contactTimezone: 'America/New_York',
+          workingHours: { start: 9, end: 17.5 }
+        }
+      });
+    }
+
+    console.log(`Analyzing slots for contact in ${contactTimezone}`);
+
+    // Generate available slots in contact's timezone
+    const availableSlots = generateAvailableSlots(
+      rawAvailability.busyTimes,
+      rawAvailability.dateRange,
+      contactTimezone,
+      workingHours,
+      meetingDuration,
+      daysToGenerate
+    );
+
+    // Score each slot for quality
+    const scoredSlots = availableSlots.map(slot => ({
+      ...slot,
+      quality: calculateSlotQuality(slot, timePreferences),
+      // Add display times for both user and contact
+      displayTimes: {
+        contact: formatTimeForTimezone(slot.start, contactTimezone),
+        user: formatTimeForTimezone(slot.start, req.session.user.timezone || 'America/Los_Angeles')
+      }
+    }));
+
+    // Sort by quality score (highest first) and limit to best options
+    const rankedSlots = scoredSlots
+      .sort((a, b) => b.quality.score - a.quality.score)
+      .slice(0, 12); // Top 12 slots
+
+    // Group by day for better presentation
+    const slotsByDay = groupSlotsByDay(rankedSlots);
+
+    // Select optimal distribution (morning, afternoon, different days)
+    const optimalSlots = selectOptimalDistribution(rankedSlots, 3);
+
+    res.json({
+      success: true,
+      analysis: {
+        contactTimezone,
+        workingHours,
+        meetingDuration,
+        totalSlotsFound: availableSlots.length,
+        avgQualityScore: Math.round(
+          scoredSlots.reduce((sum, slot) => sum + slot.quality.score, 0) / scoredSlots.length
+        )
+      },
+      optimalSlots: optimalSlots,
+      allSlots: rankedSlots,
+      slotsByDay: slotsByDay,
+      recommendations: generateRecommendations(scoredSlots, timePreferences),
+      metadata: {
+        analyzedAt: new Date().toISOString(),
+        userId: req.session.user.id,
+        algorithm: 'v1.0'
+      }
+    });
+
+  } catch (error) {
+    console.error('Slot analysis error:', error);
+    res.status(500).json({
+      error: 'Failed to analyze slots',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
+
+// ===============================
+// SLOT ANALYSIS HELPER FUNCTIONS  
+// ===============================
+
+// Generate available time slots within working hours
+function generateAvailableSlots(busyTimes, dateRange, contactTimezone, workingHours, duration, daysToGenerate) {
+  const slots = [];
+  const startDate = new Date(dateRange.start);
+  const slotDurationMs = duration * 60 * 1000;
+  
+  // Generate slots for each day
+  for (let dayOffset = 0; dayOffset < daysToGenerate; dayOffset++) {
+    const currentDate = new Date(startDate);
+    currentDate.setDate(currentDate.getDate() + dayOffset);
+    
+    // Skip weekends (0 = Sunday, 6 = Saturday)
+    if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+      continue;
+    }
+
+    // Create working day boundaries in contact's timezone
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(workingHours.start, 0, 0, 0);
+    
+    const dayEnd = new Date(currentDate);
+    const endHour = Math.floor(workingHours.end);
+    const endMinutes = (workingHours.end % 1) * 60;
+    dayEnd.setHours(endHour, endMinutes, 0, 0);
+
+    // Convert to UTC for comparison with busy times
+    const dayStartUTC = convertTimezoneToUTC(dayStart, contactTimezone);
+    const dayEndUTC = convertTimezoneToUTC(dayEnd, contactTimezone);
+
+    // Generate hourly slots within working hours
+    let currentSlotStart = new Date(dayStartUTC);
+    
+    while (currentSlotStart < dayEndUTC) {
+      const currentSlotEnd = new Date(currentSlotStart.getTime() + slotDurationMs);
+      
+      // Check if this slot conflicts with any busy time
+      const hasConflict = busyTimes.some(busy => {
+        const busyStart = new Date(busy.start);
+        const busyEnd = new Date(busy.end);
+        return currentSlotStart < busyEnd && currentSlotEnd > busyStart;
+      });
+
+      if (!hasConflict && currentSlotEnd <= dayEndUTC) {
+        slots.push({
+          start: currentSlotStart.toISOString(),
+          end: currentSlotEnd.toISOString(),
+          duration: duration,
+          day: currentDate.toISOString().split('T')[0], // YYYY-MM-DD
+          dayOfWeek: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+          timeOfDay: getTimeOfDay(currentSlotStart)
+        });
+      }
+
+      // Move to next potential slot (30-minute intervals)
+      currentSlotStart.setMinutes(currentSlotStart.getMinutes() + 30);
+    }
+  }
+
+  return slots;
+}
+
+// Calculate quality score for a time slot
+function calculateSlotQuality(slot, preferences) {
+  let score = 100; // Base score
+  const reasons = [];
+  
+  const slotStart = new Date(slot.start);
+  const hour = slotStart.getUTCHours();
+  const dayOfWeek = slotStart.getUTCDay();
+
+  // Time of day preferences
+  if (slot.timeOfDay === 'morning' && preferences.includes('morning')) {
+    score += 15;
+    reasons.push('Preferred morning time');
+  }
+  
+  if (slot.timeOfDay === 'afternoon' && preferences.includes('afternoon')) {
+    score += 10;
+    reasons.push('Preferred afternoon time');
+  }
+
+  // Avoid lunch hours (12:00-13:30)
+  if (hour >= 12 && hour < 14) {
+    score -= 20;
+    reasons.push('Lunch hour penalty');
+  }
+
+  // Prefer mid-week
+  if (dayOfWeek >= 2 && dayOfWeek <= 4) { // Tuesday-Thursday
+    score += 5;
+    reasons.push('Mid-week bonus');
+  }
+
+  // Avoid very early or very late
+  if (hour < 8 || hour > 18) {
+    score -= 15;
+    reasons.push('Outside prime hours');
+  }
+
+  // Prefer specific "golden hours"
+  if (hour === 10 || hour === 14) { // 10am or 2pm
+    score += 10;
+    reasons.push('Golden hour bonus');
+  }
+
+  return {
+    score: Math.max(0, Math.min(100, score)),
+    reasons: reasons,
+    timeOfDay: slot.timeOfDay
+  };
+}
+
+// Helper function to determine time of day
+function getTimeOfDay(date) {
+  const hour = date.getUTCHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+// Format time for specific timezone
+function formatTimeForTimezone(isoString, timezone) {
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: timezone,
+      timeZoneName: 'short'
+    });
+  } catch (error) {
+    return isoString; // Fallback
+  }
+}
+
+// Convert timezone-aware date to UTC
+function convertTimezoneToUTC(date, timezone) {
+  // This is a simplified conversion - in production you'd use a library like moment-timezone
+  // For now, we'll work with the assumption that times are already in UTC
+  return new Date(date.toISOString());
+}
+
+// Group slots by day
+function groupSlotsByDay(slots) {
+  const grouped = {};
+  slots.forEach(slot => {
+    const day = slot.day;
+    if (!grouped[day]) {
+      grouped[day] = [];
+    }
+    grouped[day].push(slot);
+  });
+  return grouped;
+}
+
+// Select optimal distribution of slots
+function selectOptimalDistribution(rankedSlots, targetCount) {
+  const selected = [];
+  const usedDays = new Set();
+  const usedTimeSlots = new Set();
+
+  // First pass: pick best slots from different days and times
+  for (const slot of rankedSlots) {
+    if (selected.length >= targetCount) break;
+    
+    const dayTimeKey = `${slot.day}-${slot.timeOfDay}`;
+    
+    if (!usedDays.has(slot.day) || (!usedTimeSlots.has(dayTimeKey) && selected.length < 2)) {
+      selected.push(slot);
+      usedDays.add(slot.day);
+      usedTimeSlots.add(dayTimeKey);
+    }
+  }
+
+  // Second pass: fill remaining slots if needed
+  for (const slot of rankedSlots) {
+    if (selected.length >= targetCount) break;
+    if (!selected.find(s => s.start === slot.start)) {
+      selected.push(slot);
+    }
+  }
+
+  return selected.slice(0, targetCount);
+}
+
+// Generate recommendations based on analysis
+function generateRecommendations(slots, preferences) {
+  const recommendations = [];
+  
+  if (slots.length === 0) {
+    recommendations.push('No available slots found. Consider extending the date range or adjusting working hours.');
+    return recommendations;
+  }
+
+  const avgScore = slots.reduce((sum, slot) => sum + slot.quality.score, 0) / slots.length;
+  
+  if (avgScore > 80) {
+    recommendations.push('Excellent availability! Multiple high-quality time slots available.');
+  } else if (avgScore > 60) {
+    recommendations.push('Good availability with some optimal time slots.');
+  } else {
+    recommendations.push('Limited optimal slots. Consider adjusting time preferences or extending date range.');
+  }
+
+  const morningSlots = slots.filter(s => s.timeOfDay === 'morning').length;
+  const afternoonSlots = slots.filter(s => s.timeOfDay === 'afternoon').length;
+
+  if (morningSlots > afternoonSlots && !preferences.includes('morning')) {
+    recommendations.push('Consider morning meetings - better availability detected.');
+  }
+
+  return recommendations;
+}
+
 // ===============================
 // DEBUG ROUTES
 // ===============================
