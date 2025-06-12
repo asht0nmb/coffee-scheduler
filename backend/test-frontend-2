@@ -1,0 +1,273 @@
+// Minimal frontend interface
+app.get('/app', ensureAuthenticated, (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Smart Coffee Scheduler</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            .loading { 
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; 
+            }
+            .slot-card {
+                transition: all 0.2s ease;
+            }
+            .slot-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <div class="max-w-6xl mx-auto p-6">
+            <!-- Header -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">☕ Smart Coffee Scheduler</h1>
+                        <p class="text-gray-600">Welcome, ${req.session.user.name}</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-500">Your timezone</div>
+                        <div class="font-medium">${req.session.user.timezone || 'America/Los_Angeles'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interface -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left Panel: Inputs -->
+                <div class="space-y-6">
+                    <!-- Calendar Check -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">📅 Check Your Availability</h2>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                                    <input type="date" id="startDate" value="2025-06-12" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                                    <input type="date" id="endDate" value="2025-06-19"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <button onclick="checkAvailability()" 
+                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                Check Calendar Availability
+                            </button>
+                        </div>
+                        <div id="availabilityResults" class="mt-4"></div>
+                    </div>
+
+                    <!-- Contact Setup -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">👤 Contact Details</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Contact Name</label>
+                                <input type="text" id="contactName" placeholder="Sarah Chen" value="Sarah Chen"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Their Timezone</label>
+                                <select id="contactTimezone" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="America/New_York" selected>Eastern Time (EST/EDT)</option>
+                                    <option value="America/Chicago">Central Time (CST/CDT)</option>
+                                    <option value="America/Denver">Mountain Time (MST/MDT)</option>
+                                    <option value="America/Los_Angeles">Pacific Time (PST/PDT)</option>
+                                    <option value="Europe/London">London (GMT/BST)</option>
+                                    <option value="Europe/Paris">Paris (CET/CEST)</option>
+                                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                    <option value="Asia/Singapore">Singapore (SGT)</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Working Hours Start</label>
+                                    <input type="number" id="workStart" value="9" min="6" max="12" step="0.5"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Working Hours End</label>
+                                    <input type="number" id="workEnd" value="17.5" min="12" max="20" step="0.5"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <button onclick="generateSlots()" disabled id="generateBtn"
+                                    class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                🧠 Generate Smart Slots
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Results -->
+                <div class="space-y-6">
+                    <!-- Optimal Slots -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">🎯 Optimal Meeting Times</h2>
+                        <div id="optimalSlots" class="space-y-3">
+                            <div class="text-gray-500 text-center py-8">
+                                Check your availability first, then generate slots for your contact.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">📊 Analysis</h2>
+                        <div id="analysisResults" class="space-y-3">
+                            <div class="text-gray-500 text-center py-4">
+                                Analysis will appear here after generating slots.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let rawAvailabilityData = null;
+
+            async function checkAvailability() {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const resultsDiv = document.getElementById('availabilityResults');
+                const generateBtn = document.getElementById('generateBtn');
+
+                resultsDiv.innerHTML = '<div class="loading bg-blue-50 p-3 rounded-lg text-blue-700">⏳ Checking your calendar...</div>';
+
+                try {
+                    const response = await fetch(\`/api/calendar/raw-availability?startDate=\${startDate}&endDate=\${endDate}\`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        rawAvailabilityData = data;
+                        resultsDiv.innerHTML = \`
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <div class="font-medium text-green-800">✅ Calendar checked successfully!</div>
+                                <div class="text-sm text-green-700 mt-1">
+                                    Found \${data.summary.totalBusySlots} busy periods across \${data.dateRange.totalDays} days
+                                </div>
+                                <div class="text-xs text-green-600 mt-1">
+                                    \${data.summary.totalBusyHours} hours busy • \${data.summary.averageBusyPerDay} min/day average
+                                </div>
+                            </div>
+                        \`;
+                        generateBtn.disabled = false;
+                        generateBtn.classList.remove('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
+                    } else {
+                        throw new Error(data.error || 'Failed to check availability');
+                    }
+                } catch (error) {
+                    resultsDiv.innerHTML = \`
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <div class="font-medium text-red-800">❌ Error checking calendar</div>
+                            <div class="text-sm text-red-700">\${error.message}</div>
+                        </div>
+                    \`;
+                }
+            }
+
+            async function generateSlots() {
+                if (!rawAvailabilityData) {
+                    alert('Please check your availability first!');
+                    return;
+                }
+
+                const contactName = document.getElementById('contactName').value;
+                const contactTimezone = document.getElementById('contactTimezone').value;
+                const workStart = parseFloat(document.getElementById('workStart').value);
+                const workEnd = parseFloat(document.getElementById('workEnd').value);
+
+                const optimalSlotsDiv = document.getElementById('optimalSlots');
+                const analysisDiv = document.getElementById('analysisResults');
+
+                optimalSlotsDiv.innerHTML = '<div class="loading bg-blue-50 p-4 rounded-lg text-blue-700">🧠 Analyzing optimal times...</div>';
+                analysisDiv.innerHTML = '<div class="loading bg-blue-50 p-4 rounded-lg text-blue-700">📊 Running analysis...</div>';
+
+                try {
+                    const response = await fetch('/api/calendar/analyze-slots', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            rawAvailability: rawAvailabilityData,
+                            contactTimezone: contactTimezone,
+                            workingHours: { start: workStart, end: workEnd },
+                            timePreferences: ['morning', 'afternoon'],
+                            meetingDuration: 60
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Display optimal slots
+                        optimalSlotsDiv.innerHTML = data.optimalSlots.map((slot, index) => \`
+                            <div class="slot-card bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border border-blue-200">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-gray-900">Option \${index + 1}</div>
+                                        <div class="text-blue-700 font-medium">\${slot.displayTimes?.contact || slot.start}</div>
+                                        <div class="text-sm text-gray-600">Your time: \${slot.displayTimes?.user || 'N/A'}</div>
+                                        <div class="text-xs text-gray-500 mt-1">\${slot.quality?.reasons?.join(', ') || ''}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="bg-white px-2 py-1 rounded text-sm font-medium text-gray-700">
+                                            \${slot.quality?.score || 0}/100
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        \`).join('') || '<div class="text-gray-500">No optimal slots found</div>';
+
+                        // Display analysis
+                        analysisDiv.innerHTML = \`
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-600">Total Slots Found</div>
+                                        <div class="text-xl font-bold text-gray-900">\${data.analysis?.totalSlotsFound || 0}</div>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <div class="text-sm text-gray-600">Avg Quality Score</div>
+                                        <div class="text-xl font-bold text-gray-900">\${data.analysis?.avgQualityScore || 0}/100</div>
+                                    </div>
+                                </div>
+                                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <div class="font-medium text-yellow-800 mb-1">💡 Recommendations:</div>
+                                    <ul class="text-sm text-yellow-700 space-y-1">
+                                        \${data.recommendations?.map(rec => \`<li>• \${rec}</li>\`).join('') || '<li>No recommendations</li>'}
+                                    </ul>
+                                </div>
+                            </div>
+                        \`;
+                    } else {
+                        throw new Error(data.error || 'Failed to analyze slots');
+                    }
+                } catch (error) {
+                    optimalSlotsDiv.innerHTML = \`
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <div class="font-medium text-red-800">❌ Error generating slots</div>
+                            <div class="text-sm text-red-700">\${error.message}</div>
+                        </div>
+                    \`;
+                }
+            }
+
+            // Auto-check availability on page load
+            window.addEventListener('load', () => {
+                setTimeout(checkAvailability, 1000);
+            });
+        </script>
+    </body>
+    </html>
+  `);
+});

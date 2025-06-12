@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Scheduler - Test Frontend</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 8px 16px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .response { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; white-space: pre-wrap; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+        input, select { padding: 5px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>☕ Coffee Scheduler - API Test Frontend</h1>
+    
+    <!-- Auth Section -->
+    <div class="section">
+        <h3>Authentication</h3>
+        <button onclick="checkAuth()">Check Auth Status</button>
+        <button onclick="login()">Login with Google</button>
+        <button onclick="logout()">Logout</button>
+        <div id="auth-response" class="response"></div>
+    </div>
+
+    <!-- Health Check -->
+    <div class="section">
+        <h3>Health Check</h3>
+        <button onclick="healthCheck()">Check API Health</button>
+        <div id="health-response" class="response"></div>
+    </div>
+
+    <!-- User Profile -->
+    <div class="section">
+        <h3>User Profile</h3>
+        <button onclick="getUserProfile()">Get Profile</button>
+        <div id="profile-response" class="response"></div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="section">
+        <h3>Contacts Management</h3>
+        <button onclick="getContacts()">Get All Contacts</button>
+        <button onclick="getContactStats()">Get Stats</button>
+        <br><br>
+        
+        <h4>Add New Contact</h4>
+        <input type="text" id="contact-name" placeholder="Name" />
+        <input type="email" id="contact-email" placeholder="Email" />
+        <select id="contact-timezone">
+            <option value="America/New_York">Eastern Time</option>
+            <option value="America/Chicago">Central Time</option>
+            <option value="America/Denver">Mountain Time</option>
+            <option value="America/Los_Angeles">Pacific Time</option>
+            <option value="Europe/London">London</option>
+        </select>
+        <button onclick="addContact()">Add Contact</button>
+        
+        <div id="contacts-response" class="response"></div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="section">
+        <h3>Calendar Integration</h3>
+        <button onclick="testCalendar()">Test Calendar Access</button>
+        <br><br>
+        
+        <h4>Get Availability</h4>
+        <input type="date" id="start-date" />
+        <input type="date" id="end-date" />
+        <button onclick="getAvailability()">Get Raw Availability</button>
+        
+        <div id="calendar-response" class="response"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        // Set default dates
+        document.getElementById('start-date').value = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        document.getElementById('end-date').value = nextWeek.toISOString().split('T')[0];
+
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        function displayResponse(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.className = `response ${result.success ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(result, null, 2);
+        }
+
+        // Auth functions
+        async function checkAuth() {
+            const result = await apiCall('/auth/status');
+            displayResponse('auth-response', result);
+        }
+
+        function login() {
+            window.location.href = `${API_BASE}/auth/google`;
+        }
+
+        async function logout() {
+            const result = await apiCall('/auth/logout', { method: 'POST' });
+            displayResponse('auth-response', result);
+        }
+
+        // Health check
+        async function healthCheck() {
+            const result = await apiCall('/health');
+            displayResponse('health-response', result);
+        }
+
+        // User profile
+        async function getUserProfile() {
+            const result = await apiCall('/user/profile');
+            displayResponse('profile-response', result);
+        }
+
+        // Contacts
+        async function getContacts() {
+            const result = await apiCall('/contacts');
+            displayResponse('contacts-response', result);
+        }
+
+        async function getContactStats() {
+            const result = await apiCall('/contacts/stats');
+            displayResponse('contacts-response', result);
+        }
+
+        async function addContact() {
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const timezone = document.getElementById('contact-timezone').value;
+
+            if (!name || !email) {
+                alert('Please fill in name and email');
+                return;
+            }
+
+            const result = await apiCall('/contacts', {
+                method: 'POST',
+                body: JSON.stringify({ name, email, timezone })
+            });
+
+            displayResponse('contacts-response', result);
+            
+            if (result.success) {
+                document.getElementById('contact-name').value = '';
+                document.getElementById('contact-email').value = '';
+            }
+        }
+
+        // Calendar
+        async function testCalendar() {
+            const result = await apiCall('/calendar/test');
+            displayResponse('calendar-response', result);
+        }
+
+        async function getAvailability() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+
+            const result = await apiCall(`/calendar/raw-availability?startDate=${startDate}&endDate=${endDate}`);
+            displayResponse('calendar-response', result);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            checkAuth();
+            healthCheck();
+        });
+    </script>
+</body>
+</html>

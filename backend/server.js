@@ -1178,6 +1178,12 @@ function generateRecommendations(slots, preferences) {
   return recommendations;
 }
 
+//test frontend
+app.use(express.json());
+
+// Serve static files for test frontend
+app.use(express.static(__dirname));
+
 // ===============================
 // DEBUG ROUTES
 // ===============================
