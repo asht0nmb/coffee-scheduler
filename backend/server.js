@@ -843,25 +843,6 @@ app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) 
       }
     });
 
-    // Debug: List all registered routes
-app.get('/api/debug/routes', (req, res) => {
-  const routes = [];
-  
-  app._router.stack.forEach(middleware => {
-    if (middleware.route) {
-      routes.push({
-        path: middleware.route.path,
-        methods: Object.keys(middleware.route.methods)
-      });
-    }
-  });
-  
-  res.json({
-    totalRoutes: routes.length,
-    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
-  });
-});
-
   } catch (error) {
     console.error('Raw availability error:', error);
     
@@ -885,6 +866,29 @@ app.get('/api/debug/routes', (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
+});
+
+// ===============================
+// DEBUG ROUTES
+// ===============================
+
+// Debug: List all registered routes
+app.get('/api/debug/routes', (req, res) => {
+  const routes = [];
+  
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    }
+  });
+  
+  res.json({
+    totalRoutes: routes.length,
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
+  });
 });
 
 
