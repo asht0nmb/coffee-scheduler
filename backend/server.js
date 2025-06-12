@@ -750,6 +750,8 @@ app.get('/api/calendar/events', ensureAuthenticated, async (req, res) => {
       details: error.message 
     });
   }
+});
+
 
   // Get raw calendar availability (free/busy times only)
 app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) => {
@@ -865,8 +867,7 @@ app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) 
     });
   }
 });
-  
-});
+
 
 // ===============================
 // ERROR HANDLING
