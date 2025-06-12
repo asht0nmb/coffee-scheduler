@@ -750,6 +750,9 @@ app.get('/api/calendar/events', ensureAuthenticated, async (req, res) => {
       details: error.message 
     });
   }
+
+
+  
 });
 
 // ===============================
@@ -773,6 +776,122 @@ app.use((err, req, res, next) => {
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'production' ? 'An error occurred' : err.message
   });
+
+  // Get raw calendar availability (free/busy times only)
+app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) => {
+  try {
+    const { 
+      startDate, 
+      endDate,
+      timeZone = 'UTC' // Default to UTC for consistent calculations
+    } = req.query;
+
+    // Validation
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'startDate and endDate are required',
+        example: '/api/calendar/raw-availability?startDate=2025-06-12&endDate=2025-06-19',
+        format: 'Use YYYY-MM-DD format'
+      });
+    }
+
+    // Parse and validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ 
+        error: 'Invalid date format. Use YYYY-MM-DD' 
+      });
+    }
+
+    if (start >= end) {
+      return res.status(400).json({ 
+        error: 'startDate must be before endDate' 
+      });
+    }
+
+    // Convert to ISO strings for Google API
+    const timeMin = start.toISOString();
+    const timeMax = end.toISOString();
+
+    console.log(`Fetching raw availability: ${timeMin} to ${timeMax}`);
+
+    const calendar = google.calendar({ version: 'v3', auth: req.oauth2Client });
+
+    // Use Google's freebusy API - designed exactly for this purpose
+    const freeBusyResponse = await calendar.freebusy.query({
+      requestBody: {
+        timeMin,
+        timeMax,
+        timeZone,
+        items: [{ id: 'primary' }] // Primary calendar only for now
+      }
+    });
+
+    // Extract busy times
+    const busyTimes = freeBusyResponse.data.calendars.primary.busy || [];
+    
+    // Calculate some basic stats
+    const totalBusyMinutes = busyTimes.reduce((total, busy) => {
+      const duration = new Date(busy.end) - new Date(busy.start);
+      return total + (duration / (1000 * 60)); // Convert to minutes
+    }, 0);
+
+    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    // Return clean, raw data
+    res.json({
+      success: true,
+      dateRange: {
+        start: timeMin,
+        end: timeMax,
+        totalDays,
+        timeZone
+      },
+      busyTimes: busyTimes.map(busy => ({
+        start: busy.start,
+        end: busy.end,
+        duration: Math.round((new Date(busy.end) - new Date(busy.start)) / (1000 * 60)) // minutes
+      })),
+      summary: {
+        totalBusySlots: busyTimes.length,
+        totalBusyMinutes: Math.round(totalBusyMinutes),
+        totalBusyHours: Math.round(totalBusyMinutes / 60 * 10) / 10, // Round to 1 decimal
+        averageBusyPerDay: Math.round(totalBusyMinutes / totalDays)
+      },
+      metadata: {
+        fetchedAt: new Date().toISOString(),
+        userId: req.session.user.id,
+        calendarId: 'primary'
+      }
+    });
+
+  } catch (error) {
+    console.error('Raw availability error:', error);
+    
+    // Handle specific Google API errors
+    if (error.code === 403) {
+      return res.status(403).json({ 
+        error: 'Calendar access denied. Please re-authenticate.',
+        suggestion: 'Visit /api/auth/google to re-authorize'
+      });
+    }
+
+    if (error.code === 401) {
+      return res.status(401).json({ 
+        error: 'Authentication expired',
+        suggestion: 'Visit /api/auth/google to re-authenticate'
+      });
+    }
+
+    res.status(500).json({ 
+      error: 'Failed to fetch calendar availability',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
+
 });
 
 // ===============================
