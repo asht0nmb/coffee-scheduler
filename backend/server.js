@@ -751,32 +751,6 @@ app.get('/api/calendar/events', ensureAuthenticated, async (req, res) => {
     });
   }
 
-
-  
-});
-
-// ===============================
-// ERROR HANDLING
-// ===============================
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ error: 'CORS policy violation' });
-  }
-  
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'production' ? 'An error occurred' : err.message
-  });
-
   // Get raw calendar availability (free/busy times only)
 app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) => {
   try {
@@ -891,7 +865,30 @@ app.get('/api/calendar/raw-availability', ensureAuthenticated, async (req, res) 
     });
   }
 });
+  
+});
 
+// ===============================
+// ERROR HANDLING
+// ===============================
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'CORS policy violation' });
+  }
+  
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'production' ? 'An error occurred' : err.message
+  });
 });
 
 // ===============================
