@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 5000;
 // ===============================
 const connectDB = async () => {
   try {
-    if (process.env.MONGODB_URI) {
-      await mongoose.connect(process.env.MONGODB_URI);
+    if (process.env.MONGO_URL) {
+      await mongoose.connect(process.env.MONGO_URL);
       console.log('MongoDB connected successfully');
     } else {
       console.log('No MongoDB URI provided - using memory storage');
@@ -208,7 +208,7 @@ const SCOPES = [
 
 // Create or update user in MongoDB
 async function upsertUser(googleProfile) {
-  if (!process.env.MONGODB_URI) {
+  if (!process.env.MONGO_URL) {
     return {
       googleId: googleProfile.id,
       email: googleProfile.email,
@@ -413,7 +413,7 @@ app.post('/api/auth/logout', (req, res) => {
 // Get user profile
 app.get('/api/user/profile', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json(req.session.user);
     }
     
@@ -434,7 +434,7 @@ app.put('/api/user/preferences', ensureAuthenticated, async (req, res) => {
   try {
     const { timezone, workingHours, preferences } = req.body;
     
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json({ 
         message: 'Preferences updated (mock)',
         timezone, workingHours, preferences 
@@ -473,7 +473,7 @@ app.put('/api/user/preferences', ensureAuthenticated, async (req, res) => {
 // Get all contacts for user
 app.get('/api/contacts', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json([
         { 
           id: '1', 
@@ -522,7 +522,7 @@ app.post('/api/contacts', ensureAuthenticated, async (req, res) => {
   }
 
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json({
         id: Date.now().toString(),
         userId: req.session.user.id,
@@ -582,7 +582,7 @@ app.put('/api/contacts/:id', ensureAuthenticated, async (req, res) => {
 
     updates.updatedAt = new Date();
 
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json({ 
         id: req.params.id, 
         ...updates, 
@@ -611,7 +611,7 @@ app.put('/api/contacts/:id', ensureAuthenticated, async (req, res) => {
 // Delete contact
 app.delete('/api/contacts/:id', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json({ success: true, message: 'Contact deleted (mock)' });
     }
 
@@ -641,7 +641,7 @@ app.delete('/api/contacts/:id', ensureAuthenticated, async (req, res) => {
 // Get contact statistics
 app.get('/api/contacts/stats', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!process.env.MONGO_URL) {
       return res.json({
         total: 2,
         pending: 1,
@@ -788,7 +788,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log('Environment:', process.env.NODE_ENV || 'development');
-      console.log('MongoDB:', process.env.MONGODB_URI ? 'Connected' : 'Not configured');
+      console.log('MongoDB:', process.env.MONGO_URL ? 'Connected' : 'Not configured');
       console.log('Google OAuth:', process.env.GOOGLE_CLIENT_ID ? 'Configured' : 'Not configured');
     });
   } catch (error) {
