@@ -56,6 +56,19 @@ if (process.env.NODE_ENV !== 'production') {
 // ===============================
 // ROUTES
 // ===============================
+
+// Health check endpoint (public, no auth required)
+app.get('/api/health', (_req, res) => {
+  const mongoose = require('mongoose');
+  res.json({ 
+    message: 'Coffee Scheduler API is running!', 
+    timestamp: new Date().toISOString(),
+    googleAuth: !!process.env.GOOGLE_CLIENT_ID,
+    mongodb: mongoose.connection.readyState === 1,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/contacts', contactsRoutes);

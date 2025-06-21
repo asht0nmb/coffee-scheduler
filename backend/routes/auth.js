@@ -3,18 +3,6 @@ const router = express.Router();
 const { oauth2Client, SCOPES, google } = require('../utils/googleAuth');
 const { upsertUser } = require('../middleware/auth');
 
-// Health check endpoint
-router.get('/health', (req, res) => {
-  const mongoose = require('mongoose');
-  res.json({ 
-    message: 'Coffee Scheduler API is running!', 
-    timestamp: new Date().toISOString(),
-    googleAuth: !!process.env.GOOGLE_CLIENT_ID,
-    mongodb: mongoose.connection.readyState === 1,
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
 // Start Google OAuth flow
 router.get('/google', (req, res) => {
   // Generate state for CSRF protection
