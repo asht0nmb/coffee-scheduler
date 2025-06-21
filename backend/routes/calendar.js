@@ -398,13 +398,17 @@ router.post('/schedule-batch', async (req, res) => {
       const batchId = `batch_${new Date().getTime()}`;
       const batchResults = [];
 
+      // PERFORMANCE FIX: Fetch user's working hours ONCE outside the loop
+      // Previous: 50+ queries for 50 contacts (N+1 pattern)
+      // Current: 1 query total (98% reduction)
+      const user = await User.findOne({ googleId: req.session.user.id });
+      const userWorkingHours = user?.workingHours || { start: 9, end: 17 };
+
       // First pass: generate and score all possible slots for each contact
       const contactSlotOptions = [];
       
       for (const contact of contacts) {
-        // Fetch user's actual working hours
-        const user = await User.findOne({ googleId: req.session.user.id });
-        const userWorkingHours = user?.workingHours || { start: 9, end: 17 };
+        // Use cached userWorkingHours (no database query in loop)
 
         const availableSlots = generateAvailableSlots(
           allBusyTimes,
