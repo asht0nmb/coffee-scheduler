@@ -21,8 +21,9 @@ const createRateLimit = (options = {}) => {
   } = options;
 
   return (req, res, next) => {
-    const key = keyGenerator(req);
-    const now = Date.now();
+    try {
+      const key = keyGenerator(req);
+      const now = Date.now();
     
     // Cleanup expired entries periodically
     if (Math.random() < 0.01) { // 1% chance to run cleanup
@@ -67,6 +68,11 @@ const createRateLimit = (options = {}) => {
     }
     
     next();
+    } catch (error) {
+      console.error('Rate limiting error:', error);
+      // Continue without rate limiting if there's an error
+      next();
+    }
   };
 };
 

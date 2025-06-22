@@ -78,6 +78,13 @@ app.use('/api/calendar', ensureAuthenticated, calendarRoutes);
 app.get('/api/debug/routes', (_req, res) => {
   const routes = [];
   
+  if (!app._router || !app._router.stack) {
+    return res.json({
+      message: 'Router not initialized',
+      routes: []
+    });
+  }
+  
   app._router.stack.forEach(middleware => {
     if (middleware.route) {
       routes.push({
@@ -118,7 +125,16 @@ app.use((_req, res) => {
 
 // Global error handler
 app.use((err, _req, res, _next) => {
-  console.error('Global error handler:', err);
+  // Safely log error with fallback
+  console.error('Global error handler:', err || 'Unknown error');
+  
+  // Handle case where err is undefined or not an Error object
+  if (!err) {
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: 'Unknown error occurred'
+    });
+  }
   
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({ error: 'CORS policy violation' });
@@ -126,7 +142,7 @@ app.use((err, _req, res, _next) => {
   
   res.status(500).json({ 
     error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    details: process.env.NODE_ENV === 'development' ? (err.message || 'Unknown error') : undefined
   });
 });
 
