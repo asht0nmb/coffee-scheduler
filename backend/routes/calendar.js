@@ -6,7 +6,10 @@ const {
   generateAvailableSlots, 
   calculateSlotQuality, 
   selectOptimalSlots,
-  calculateStandardDeviation 
+  calculateStandardDeviation,
+  // New advanced algorithm imports
+  optimizeCoffeeChats,
+  SCHEDULING_CONFIG
 } = require('../utils/slotAnalysis');
 const { 
   formatTimeForTimezone,
@@ -555,6 +558,273 @@ router.post('/schedule-batch', async (req, res) => {
     res.status(500).json({
       error: 'Failed to schedule batch',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Advanced scheduling endpoint using new algorithm
+router.post('/schedule-batch-advanced', async (req, res) => {
+  try {
+    const {
+      contactIds,
+      slotsPerContact = 3,
+      dateRange,
+      consultantMode = true
+    } = req.body;
+
+    // Enhanced validation with better error messages
+    if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'contactIds array is required',
+        example: { contactIds: ['64a1b2c3d4e5f6789012345'] }
+      });
+    }
+
+    if (contactIds.length > SCHEDULING_CONFIG.MAX_CONTACTS_PER_BATCH) {
+      return res.status(400).json({ 
+        error: `Maximum ${SCHEDULING_CONFIG.MAX_CONTACTS_PER_BATCH} contacts per batch`
+      });
+    }
+
+    if (typeof slotsPerContact !== 'number' || slotsPerContact < 1 || slotsPerContact > 10) {
+      return res.status(400).json({ 
+        error: 'slotsPerContact must be between 1 and 10' 
+      });
+    }
+
+    // Validate ObjectId format
+    if (!contactIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
+      return res.status(400).json({ 
+        error: 'Invalid contact ID format',
+        details: 'Contact IDs must be valid MongoDB ObjectIds'
+      });
+    }
+
+    // Validate and set date range
+    let start, end;
+    if (dateRange) {
+      start = new Date(dateRange.start);
+      end = new Date(dateRange.end);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ 
+          error: 'Invalid date format in dateRange',
+          format: 'Use ISO 8601 format: 2024-03-15T00:00:00Z'
+        });
+      }
+      
+      if (start >= end) {
+        return res.status(400).json({ 
+          error: 'Start date must be before end date' 
+        });
+      }
+      
+      const maxRange = 30 * 24 * 60 * 60 * 1000; // 30 days
+      if (end - start > maxRange) {
+        return res.status(400).json({ 
+          error: 'Date range cannot exceed 30 days' 
+        });
+      }
+      
+      // Prevent scheduling too far in the past
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      if (start < oneDayAgo) {
+        return res.status(400).json({ 
+          error: 'Start date cannot be in the past' 
+        });
+      }
+    } else {
+      // Default to next 2 weeks
+      start = new Date();
+      end = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    }
+
+    // Fetch contacts from database
+    const contacts = await Contact.find({
+      _id: { $in: contactIds },
+      userId: req.session.user.id
+    });
+
+    if (contacts.length !== contactIds.length) {
+      const foundIds = contacts.map(c => c._id.toString());
+      const missingIds = contactIds.filter(id => !foundIds.includes(id));
+      return res.status(404).json({ 
+        error: 'Some contacts not found',
+        missingContactIds: missingIds
+      });
+    }
+
+    // Transform contacts to expected format for algorithm
+    const algorithContacts = contacts.map(contact => ({
+      id: contact._id.toString(),
+      name: contact.name,
+      email: contact.email,
+      timezone: contact.timezone
+    }));
+
+    // Get user's calendar busy times
+    const calendar = google.calendar({ version: 'v3', auth: req.oauth2Client });
+    const freeBusyResponse = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        timeZone: 'UTC',
+        items: [{ id: 'primary' }]
+      }
+    });
+
+    const busyTimes = freeBusyResponse.data.calendars.primary.busy || [];
+
+    // Transform busy times to expected format
+    const userCalendar = {
+      busySlots: busyTimes.map(busy => ({
+        start: new Date(busy.start),
+        end: new Date(busy.end)
+      }))
+    };
+
+    // Get existing active suggestions to avoid conflicts
+    const existingSuggestions = await SuggestedSlot.find({
+      userId: req.session.user.id,
+      status: 'active'
+    });
+
+    // Add existing suggestions to busy times
+    const now = new Date();
+    existingSuggestions.forEach(suggestion => {
+      suggestion.slots.forEach(slot => {
+        if (slot.expiresAt > now) {
+          userCalendar.busySlots.push({
+            start: slot.start,
+            end: slot.end
+          });
+        }
+      });
+    });
+
+    // Prepare algorithm options
+    const user = await User.findOne({ googleId: req.session.user.id });
+    const algorithmOptions = {
+      slotsPerContact,
+      consultantMode,
+      userTimezone: req.session.user.timezone || 'America/Los_Angeles',
+      workingHours: user?.workingHours || { 
+        start: SCHEDULING_CONFIG.WORKING_HOURS_START, 
+        end: SCHEDULING_CONFIG.WORKING_HOURS_END 
+      }
+    };
+
+    console.log(`Running advanced algorithm for ${algorithContacts.length} contacts...`);
+
+    // Run the advanced scheduling algorithm
+    const algorithmResult = optimizeCoffeeChats(
+      userCalendar,
+      algorithContacts,
+      { start: start.toISOString(), end: end.toISOString() },
+      algorithmOptions
+    );
+
+    if (!algorithmResult.success) {
+      return res.status(500).json({
+        error: 'Scheduling algorithm failed',
+        details: algorithmResult.error
+      });
+    }
+
+    // Use MongoDB transaction for consistency
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const batchId = `advanced_batch_${new Date().getTime()}`;
+      const suggestionsToInsert = [];
+
+      // Transform algorithm results to database format
+      for (const result of algorithmResult.results) {
+        if (result.suggestedSlots.length > 0) {
+          suggestionsToInsert.push({
+            userId: req.session.user.id,
+            contactId: result.contactId,
+            contactEmail: contacts.find(c => c._id.toString() === result.contactId)?.email,
+            batchId,
+            slots: result.suggestedSlots.map(slot => ({
+              start: new Date(slot.start),
+              end: new Date(slot.end),
+              score: slot.score,
+              expiresAt: new Date(new Date(slot.start).getTime() - 24 * 60 * 60 * 1000) // 24 hours before
+            }))
+          });
+        }
+      }
+
+      // Insert suggestions
+      await SuggestedSlot.insertMany(suggestionsToInsert, { session });
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      // Calculate fairness metrics
+      const allScores = algorithmResult.results.flatMap(r => r.suggestedSlots.map(s => s.score));
+      const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : 0;
+      const scoreStdDev = calculateStandardDeviation(allScores);
+      
+      // Enhanced response with algorithm insights
+      res.json({
+        success: true,
+        algorithm: 'advanced-constrained-greedy-v1.0',
+        batchId,
+        results: algorithmResult.results.map(result => {
+          const contact = contacts.find(c => c._id.toString() === result.contactId);
+          return {
+            contact: {
+              id: result.contactId,
+              name: result.contactName,
+              email: contact?.email,
+              timezone: result.contactTimezone
+            },
+            suggestedSlots: result.suggestedSlots.map(slot => ({
+              start: slot.start,
+              end: slot.end,
+              score: slot.score,
+              displayTimes: {
+                user: slot.userDisplayTime,
+                contact: slot.contactDisplayTime
+              },
+              explanation: slot.explanation,
+              expiresAt: new Date(new Date(slot.start).getTime() - 24 * 60 * 60 * 1000)
+            })),
+            averageScore: result.suggestedSlots.length > 0 ?
+              Math.round(result.suggestedSlots.reduce((sum, s) => sum + s.score, 0) / result.suggestedSlots.length) : 0
+          };
+        }),
+        statistics: {
+          totalContacts: algorithContacts.length,
+          totalSlots: algorithmResult.results.reduce((sum, r) => sum + r.suggestedSlots.length, 0),
+          averageScore: Math.round(avgScore),
+          scoreStandardDeviation: Math.round(scoreStdDev),
+          fairnessScore: Math.round(100 - scoreStdDev), // Lower std dev = higher fairness
+          consultantMode,
+          processingTime: algorithmResult.metadata.processingTime
+        },
+        metadata: {
+          ...algorithmResult.metadata,
+          createdAt: new Date().toISOString(),
+          dateRange: { start: start.toISOString(), end: end.toISOString() }
+        }
+      });
+
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+
+  } catch (error) {
+    console.error('Advanced batch scheduling error:', error);
+    res.status(500).json({
+      error: 'Failed to schedule batch with advanced algorithm',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });

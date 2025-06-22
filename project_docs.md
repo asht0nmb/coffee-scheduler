@@ -135,6 +135,14 @@ const ModelName = mongoose.models.ModelName || mongoose.model('ModelName', model
 1. **Contact Preferences**: Time preferences not fully utilized in scoring algorithm
 2. **Fairness Algorithm**: Per-contact scoring doesn't ensure global fairness
 3. **Schema Duplication**: TentativeSlot and SuggestedSlot serve similar purposes
+4. **Debug Routes Broken**: `/api/debug/routes` endpoint returns internal server error
+   - **Impact**: Development/troubleshooting tool unavailable, no user-facing impact
+   - **Root Cause**: Route registration incomplete during modular refactoring
+   - **Affected Endpoints**: `/api/debug/*` routes only
+   - **Workaround**: Use direct endpoint testing for route verification
+   - **Timeline**: Fix after performance optimization sprint (Sprint 2)
+   - **Assigned**: Backlog - for future development sprint
+   - **Dependencies**: None - standalone debugging feature
 
 ---
 
