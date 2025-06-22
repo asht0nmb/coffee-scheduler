@@ -7,9 +7,16 @@ const {
   calculateSlotQuality, 
   selectOptimalSlots,
   calculateStandardDeviation,
-  // New advanced algorithm imports
+  // Advanced algorithm imports - All Phases
   optimizeCoffeeChats,
-  SCHEDULING_CONFIG
+  SCHEDULING_CONFIG,
+  // Phase 2: Optimization Layer
+  optimizeAssignmentLocally,
+  // Phase 3: Edge Case Handling
+  handleInsufficientSlots,
+  handleExtremeTimezones,
+  detectMeetingOverload,
+  generateExplanation
 } = require('../utils/slotAnalysis');
 const { 
   formatTimeForTimezone,
@@ -17,6 +24,9 @@ const {
   selectOptimalDistribution,
   generateRecommendations
 } = require('../utils/timeUtils');
+const { batchRateLimit, calendarRateLimit } = require('../middleware/rateLimiting');
+const { validateSchedulingRequest } = require('../middleware/validation');
+const { handleSchedulingError } = require('../utils/errorHandler');
 
 const router = express.Router();
 
@@ -201,7 +211,7 @@ router.get('/raw-availability', async (req, res) => {
 });
 
 // Analyze slots for optimal scheduling
-router.post('/analyze-slots', async (req, res) => {
+router.post('/analyze-slots', calendarRateLimit, async (req, res) => {
   try {
     const {
       rawAvailability,    // From our raw-availability endpoint
@@ -290,7 +300,7 @@ router.post('/analyze-slots', async (req, res) => {
 });
 
 // Endpoint for batch scheduling
-router.post('/schedule-batch', async (req, res) => {
+router.post('/schedule-batch', batchRateLimit, validateSchedulingRequest, async (req, res) => {
   try {
     const {
       contactIds,
@@ -450,10 +460,16 @@ router.post('/schedule-batch', async (req, res) => {
       // Collect all suggestions for bulk insert
       const suggestionsToInsert = [];
 
-      // Second pass: select slots using global target score
+      // Second pass: select slots using global target score with enhanced algorithm
       for (const { contact, availableSlots } of contactSlotOptions) {
         // Use global target score for fairness
         const targetScore = globalTargetScore;
+
+        // Check for insufficient slots for this contact
+        const slotCheck = handleInsufficientSlots(availableSlots, [contact], slotsPerContact);
+        if (slotCheck?.error === "SEVERE_SHORTAGE") {
+          console.warn(`⚠️ Severe slot shortage for ${contact.name}`);
+        }
 
         // Select diverse slots near target score
         const selectedSlots = selectOptimalSlots(availableSlots, slotsPerContact, targetScore, allBusyTimes);
@@ -529,7 +545,11 @@ router.post('/schedule-batch', async (req, res) => {
       const contactAverages = allContactScores.map(c => c.average);
       const contactAvgStdDev = calculateStandardDeviation(contactAverages);
 
-      res.json({
+      // Check for meeting density issues in basic endpoint too
+      const allProposedSlots = batchResults.flatMap(r => r.suggestedSlots.map(s => ({ start: s.start, end: s.end })));
+      const densityWarning = detectMeetingOverload({ busySlots: busyTimes }, allProposedSlots, 4);
+
+      const response = {
         success: true,
         batchId,
         results: batchResults,
@@ -542,9 +562,13 @@ router.post('/schedule-batch', async (req, res) => {
           consultantMode
         },
         metadata: {
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          algorithm: 'legacy-enhanced-v1.1',
+          warnings: densityWarning ? [densityWarning] : undefined
         }
-      });
+      };
+
+      res.json(response);
 
     } catch (error) {
       await session.abortTransaction();
@@ -554,16 +578,12 @@ router.post('/schedule-batch', async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Batch scheduling error:', error);
-    res.status(500).json({
-      error: 'Failed to schedule batch',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleSchedulingError(error, res, 'batch-scheduling');
   }
 });
 
 // Advanced scheduling endpoint using new algorithm
-router.post('/schedule-batch-advanced', async (req, res) => {
+router.post('/schedule-batch-advanced', batchRateLimit, validateSchedulingRequest, async (req, res) => {
   try {
     const {
       contactIds,
@@ -771,7 +791,7 @@ router.post('/schedule-batch-advanced', async (req, res) => {
       // Enhanced response with algorithm insights
       res.json({
         success: true,
-        algorithm: 'advanced-constrained-greedy-v1.0',
+        algorithm: 'constrained-greedy-v2.0-enhanced',
         batchId,
         results: algorithmResult.results.map(result => {
           const contact = contacts.find(c => c._id.toString() === result.contactId);
@@ -821,11 +841,7 @@ router.post('/schedule-batch-advanced', async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Advanced batch scheduling error:', error);
-    res.status(500).json({
-      error: 'Failed to schedule batch with advanced algorithm',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+    handleSchedulingError(error, res, 'algorithm');
   }
 });
 
