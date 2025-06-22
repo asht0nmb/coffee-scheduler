@@ -69,6 +69,107 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// Server-level debug endpoint (bypasses authentication)
+app.get('/api/debug/server', (_req, res) => {
+  const results = {
+    message: 'Server-level debug test',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    tests: {}
+  };
+
+  try {
+    // Test 1: Environment variables
+    results.tests.environment = {
+      hasMongoUrl: !!process.env.MONGO_URL,
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      hasSessionSecret: !!process.env.SESSION_SECRET,
+      nodeEnv: process.env.NODE_ENV || 'not set',
+      status: 'pass'
+    };
+
+    // Test 2: Database connection
+    try {
+      const mongoose = require('mongoose');
+      results.tests.database = {
+        connectionState: mongoose.connection.readyState,
+        connectionStateText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown',
+        hasModels: {
+          User: !!mongoose.models.User,
+          Contact: !!mongoose.models.Contact,
+          SuggestedSlot: !!mongoose.models.SuggestedSlot
+        },
+        status: mongoose.connection.readyState === 1 ? 'pass' : 'warn'
+      };
+    } catch (dbError) {
+      results.tests.database = {
+        error: dbError.message,
+        status: 'fail'
+      };
+    }
+
+    // Test 3: Dependencies and modules
+    try {
+      const requiredModules = {
+        express: require('express'),
+        mongoose: require('mongoose'),
+        googleapis: require('googleapis'),
+        moment: require('moment-timezone'),
+        cors: require('cors')
+      };
+      
+      results.tests.dependencies = {
+        expressVersion: requiredModules.express.version || 'unknown',
+        mongooseVersion: requiredModules.mongoose.version || 'unknown',
+        allLoaded: Object.keys(requiredModules).length === 5,
+        status: 'pass'
+      };
+    } catch (depError) {
+      results.tests.dependencies = {
+        error: depError.message,
+        status: 'fail'
+      };
+    }
+
+    // Test 4: File system access
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const routesPath = path.join(__dirname, 'routes', 'calendar.js');
+      const utilsPath = path.join(__dirname, 'utils', 'slotAnalysis.js');
+      
+      results.tests.fileSystem = {
+        calendarRouteExists: fs.existsSync(routesPath),
+        slotAnalysisExists: fs.existsSync(utilsPath),
+        workingDirectory: process.cwd(),
+        status: 'pass'
+      };
+    } catch (fsError) {
+      results.tests.fileSystem = {
+        error: fsError.message,
+        status: 'fail'
+      };
+    }
+
+    // Overall status
+    const allPassed = Object.values(results.tests).every(test => test.status === 'pass');
+    const anyFailed = Object.values(results.tests).some(test => test.status === 'fail');
+    results.overallStatus = anyFailed ? 'fail' : (allPassed ? 'pass' : 'partial');
+
+    res.json(results);
+
+  } catch (error) {
+    results.tests.criticalError = {
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : 'Hidden in production',
+      status: 'fail'
+    };
+    results.overallStatus = 'fail';
+    res.status(500).json(results);
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/contacts', contactsRoutes);
@@ -80,6 +181,7 @@ app.get('/api/debug/routes', (_req, res) => {
   const routes = [
     // Health and debug routes
     { path: '/api/health', methods: ['GET'], description: 'Health check endpoint' },
+    { path: '/api/debug/server', methods: ['GET'], description: 'Server-level debug (bypasses auth)' },
     { path: '/api/debug/routes', methods: ['GET'], description: 'This route listing' },
     
     // Auth routes
@@ -100,6 +202,10 @@ app.get('/api/debug/routes', (_req, res) => {
     { path: '/api/contacts/stats', methods: ['GET'], description: 'Get contact statistics' },
     
     // Calendar routes (require authentication)
+    { path: '/api/calendar/debug', methods: ['GET'], description: 'Debug calendar route access' },
+    { path: '/api/calendar/debug-middleware', methods: ['POST'], description: 'Test middleware imports' },
+    { path: '/api/calendar/debug-rate-limit', methods: ['POST'], description: 'Test rate limiting' },
+    { path: '/api/calendar/debug-validation', methods: ['POST'], description: 'Test validation middleware' },
     { path: '/api/calendar/test', methods: ['GET'], description: 'Test calendar access' },
     { path: '/api/calendar/events', methods: ['GET'], description: 'Get calendar events' },
     { path: '/api/calendar/raw-availability', methods: ['GET'], description: 'Get raw availability' },

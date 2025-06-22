@@ -30,6 +30,180 @@ const { handleSchedulingError } = require('../utils/errorHandler');
 
 const router = express.Router();
 
+// Debug route - bypasses all middleware to test basic route access
+router.get('/debug', (req, res) => {
+  res.json({
+    message: 'Calendar debug route works!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    hasTokens: !!req.session?.tokens,
+    hasOauth2Client: !!req.oauth2Client
+  });
+});
+
+// Test route to check middleware components with deep testing
+router.post('/debug-middleware', (req, res) => {
+  const results = {
+    message: 'Middleware debug test',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    tests: {}
+  };
+
+  try {
+    // Test 1: Basic import existence
+    results.tests.basicImports = {
+      slotAnalysisImported: !!generateAvailableSlots,
+      timeUtilsImported: !!formatTimeForTimezone,
+      errorHandlerImported: !!handleSchedulingError,
+      validationAvailable: !!validateSchedulingRequest,
+      rateLimitingAvailable: !!batchRateLimit,
+      status: 'pass'
+    };
+
+    // Test 2: Function callable test
+    try {
+      // Test generateAvailableSlots with minimal safe data
+      const testBusyTimes = [];
+      const testDateRange = { start: new Date(), end: new Date(Date.now() + 86400000) };
+      const testResult = generateAvailableSlots(testBusyTimes, testDateRange, 'America/Los_Angeles', { start: 9, end: 17 }, 60, 1);
+      results.tests.functionCalls = {
+        generateAvailableSlots: Array.isArray(testResult),
+        status: 'pass'
+      };
+    } catch (funcError) {
+      results.tests.functionCalls = {
+        error: funcError.message,
+        status: 'fail'
+      };
+    }
+
+    // Test 3: Mongoose/Database test
+    try {
+      const mongoose = require('mongoose');
+      const testObjectId = mongoose.Types.ObjectId.isValid('507f1f77bcf86cd799439011');
+      results.tests.database = {
+        mongooseAvailable: !!mongoose,
+        objectIdValidation: testObjectId,
+        connectionState: mongoose.connection.readyState,
+        status: 'pass'
+      };
+    } catch (dbError) {
+      results.tests.database = {
+        error: dbError.message,
+        status: 'fail'
+      };
+    }
+
+    // Test 4: Session and auth data
+    results.tests.session = {
+      hasSession: !!req.session,
+      hasUser: !!req.session?.user,
+      hasTokens: !!req.session?.tokens,
+      userId: req.session?.user?.id,
+      hasOauth2Client: !!req.oauth2Client,
+      status: 'pass'
+    };
+
+    // Test 5: Request data
+    results.tests.request = {
+      method: req.method,
+      hasBody: !!req.body,
+      bodyKeys: Object.keys(req.body || {}),
+      contentType: req.get('Content-Type'),
+      status: 'pass'
+    };
+
+    // Overall status
+    const allPassed = Object.values(results.tests).every(test => test.status === 'pass');
+    results.overallStatus = allPassed ? 'pass' : 'partial';
+
+    res.json(results);
+
+  } catch (error) {
+    results.tests.criticalError = {
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : 'Hidden in production',
+      status: 'fail'
+    };
+    results.overallStatus = 'fail';
+    res.status(500).json(results);
+  }
+});
+
+// Test route with just rate limiting middleware
+router.post('/debug-rate-limit', (req, res) => {
+  try {
+    // Apply rate limiting middleware manually to catch errors
+    batchRateLimit(req, res, (err) => {
+      if (err) {
+        return res.status(500).json({
+          error: 'Rate limiting middleware failed',
+          message: err.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.json({
+        message: 'Rate limiting test passed',
+        timestamp: new Date().toISOString(),
+        rateLimitHeaders: {
+          limit: res.get('X-RateLimit-Limit'),
+          remaining: res.get('X-RateLimit-Remaining'),
+          reset: res.get('X-RateLimit-Reset')
+        }
+      });
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Rate limiting test failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Test route with just validation middleware using realistic test data
+router.post('/debug-validation', (req, res) => {
+  try {
+    // Use test data if none provided
+    const testData = Object.keys(req.body).length > 0 ? req.body : {
+      contactIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
+      slotsPerContact: 3,
+      consultantMode: true
+    };
+    
+    // Create a mock request with test data
+    const mockReq = { ...req, body: testData };
+    
+    validateSchedulingRequest(mockReq, res, (err) => {
+      if (err) {
+        return res.status(500).json({
+          error: 'Validation middleware failed',
+          message: err.message,
+          testData: testData,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.json({
+        message: 'Validation test passed',
+        validatedData: mockReq.body,
+        testUsed: Object.keys(req.body).length === 0 ? 'defaultTestData' : 'providedData',
+        timestamp: new Date().toISOString()
+      });
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Validation test failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Import models
 const User = mongoose.models.User || require('../models/User');
 const Contact = mongoose.models.Contact || require('../models/Contact');
