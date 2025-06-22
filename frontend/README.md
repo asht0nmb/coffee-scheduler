@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Coffee Scheduler Frontend
 
-## Getting Started
+A Next.js frontend application for the Coffee Scheduler - smart coffee chat scheduling across time zones.
 
-First, run the development server:
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000 to see the application!
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠 Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Framework**: Next.js 15.3.4 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Icons**: Heroicons
+- **HTTP Client**: Axios
+- **Date Handling**: date-fns
+- **Utilities**: clsx for conditional styling
 
-## Learn More
+## 📁 Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                 # Next.js App Router pages
+│   ├── layout.tsx      # Root layout
+│   └── page.tsx        # Home page
+├── lib/                # Utility libraries
+│   ├── api.ts          # API client configuration
+│   └── utils.ts        # Helper functions
+└── types/              # TypeScript type definitions
+    └── index.ts        # Shared types
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔧 Configuration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Environment Variables
 
-## Deploy on Vercel
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+- `NEXT_PUBLIC_APP_URL` - Frontend app URL
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Development (`.env.local`)
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Production (`.env.production`)
+```bash
+NEXT_PUBLIC_API_URL=https://your-backend-url.com/api
+NEXT_PUBLIC_APP_URL=https://your-frontend-url.com
+```
+
+## 🌟 Features Ready to Build
+
+The framework is set up with:
+
+- ✅ TypeScript for type safety
+- ✅ Tailwind CSS for styling
+- ✅ API integration layer with Axios
+- ✅ Shared types for backend integration
+- ✅ Utility functions for common operations
+- ✅ Responsive design foundation
+- ✅ Error handling and interceptors
+
+## 🔗 Backend Integration
+
+The frontend is configured to communicate with the coffee scheduler backend:
+
+- Authentication via cookies
+- Calendar operations
+- Contact management
+- Scheduling algorithms
+
+## 📝 Ready for Development
+
+The framework is now ready for feature development. Key areas to implement:
+
+1. **Authentication Pages** - Login/logout flows
+2. **Dashboard** - Main user interface
+3. **Contact Management** - Add/edit/delete contacts
+4. **Scheduling Interface** - Batch scheduling with calendar view
+5. **Settings** - User preferences and timezone configuration
+
+## 🎯 Next Steps
+
+Share your vision and specs for the user interface, and we can iterate on:
+
+- Page layouts and navigation
+- Component design and interactions
+- User experience flows
+- Feature prioritization
+
+The foundation is solid and ready for your creative direction!
