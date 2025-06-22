@@ -1,29 +1,32 @@
+import { LandingPageHeader } from '@/components/common/landing-page-header';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+
 export default function Home() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          ☕ Coffee Scheduler
-        </h1>
-        <p className="text-lg text-gray-600 mb-8">
-          Smart coffee chat scheduling across time zones
-        </p>
-        
-        <div className="space-y-4">
-          <a
-            href="/login"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            Get Started
-          </a>
-          
-          <div className="text-sm text-gray-500">
-            <p>🌍 Intelligent timezone handling</p>
-            <p>📅 Advanced scheduling algorithms</p>
-            <p>⚡ Seamless Google Calendar integration</p>
+    <div className="flex flex-col min-h-screen bg-[#F9F9F7]">
+      <LandingPageHeader />
+      <main className="flex-grow flex items-center justify-center">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-800 tracking-tight">
+              Spend time <span className="text-[#00837a]">chatting</span>
+              <br />
+              not scheduling
+            </h1>
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-gray-600">
+              Provide options that fit your schedule and theirs. Integrates with
+              your calendar.
+            </p>
+            <div className="mt-8 sm:mt-10">
+              <Button asChild size="lg">
+                <Link href="/login">Find times</Link>
+              </Button>
+            </div>
+             <div className="mt-4 w-24 h-1 bg-[#00837a] mx-auto rounded-full" />
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
