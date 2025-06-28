@@ -1,7 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useModal } from '@/contexts/modal-context';
 
 export const LandingPageHeader = () => {
+  const { openLoginModal } = useModal();
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-secondary-200">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -21,8 +25,8 @@ export const LandingPageHeader = () => {
             >
               How it works
             </Link>
-            <Button asChild size="sm">
-              <Link href="/login">Sign In</Link>
+            <Button onClick={openLoginModal} size="sm">
+              Sign In
             </Button>
           </nav>
           <div className="md:hidden">

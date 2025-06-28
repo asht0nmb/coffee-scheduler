@@ -1,8 +1,11 @@
+'use client';
+
 import { LandingPageHeader } from '@/components/common/landing-page-header';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { useModal } from '@/contexts/modal-context';
 
 export default function Home() {
+  const { openLoginModal } = useModal();
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <LandingPageHeader />
@@ -19,8 +22,8 @@ export default function Home() {
               Seamlessly integrates with your existing calendar.
             </p>
             <div className="mt-8 sm:mt-10">
-              <Button asChild size="lg">
-                <Link href="/login">Get Started</Link>
+              <Button onClick={openLoginModal} size="lg">
+                Get Started
               </Button>
             </div>
              <div className="mt-4 w-24 h-1 bg-primary-500 mx-auto rounded-full" />

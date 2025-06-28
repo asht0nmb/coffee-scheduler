@@ -7,7 +7,7 @@ export default function DashboardPage() {
             Welcome to Scheduler
           </h1>
           <p className="text-lg font-body text-neutral-600 mb-8">
-            Intelligent scheduling that optimizes meeting times across time zones
+            Find times that fit their schedule and yours. Integrates with your calendar.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">

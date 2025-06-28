@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ModalProvider } from "@/contexts/modal-context";
+import { LoginModal } from "@/components/auth/login-modal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Coffee Scheduler",
-  description: "Smart coffee chat scheduling across time zones",
+  title: "Scheduler",
+  description: "Smart scheduling that optimizes meeting times across time zones",
 };
 
 export default function RootLayout({
@@ -27,9 +29,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen bg-white">
-          {children}
-        </div>
+        <ModalProvider>
+          <div className="min-h-screen bg-white">
+            {children}
+          </div>
+          <LoginModal />
+        </ModalProvider>
       </body>
     </html>
   );
