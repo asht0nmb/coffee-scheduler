@@ -1,7 +1,7 @@
 'use client';
 
 import { SidebarMenu } from '@/components/dashboard/sidebar-menu';
-import { CalendarPlaceholder } from '@/components/dashboard/calendar-placeholder';
+import { GoogleCalendarMock } from '@/components/dashboard/google-calendar-mock';
 import { useModal } from '@/contexts/modal-context';
 
 export default function DashboardPage() {
@@ -21,7 +21,7 @@ export default function DashboardPage() {
         
         {/* Calendar Integration */}
         <div className="lg:col-span-3">
-          <CalendarPlaceholder />
+          <GoogleCalendarMock />
         </div>
       </div>
     </div>

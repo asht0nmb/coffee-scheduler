@@ -9,13 +9,27 @@ import { useRouter } from 'next/navigation';
 interface Participant {
   id: string;
   name: string;
+  timezone: string;
+  email?: string;
 }
+
+const majorTimezones = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'Europe/London', label: 'GMT (London)' },
+  { value: 'Europe/Paris', label: 'CET (Paris)' },
+  { value: 'Asia/Tokyo', label: 'JST (Tokyo)' },
+  { value: 'Asia/Shanghai', label: 'CST (Shanghai)' },
+  { value: 'Australia/Sydney', label: 'AEST (Sydney)' }
+];
 
 export const NewEventModal = () => {
   const { isNewEventModalOpen, closeNewEventModal } = useModal();
   const [eventTitle, setEventTitle] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([
-    { id: '1', name: '' }
+    { id: '1', name: '', timezone: 'America/New_York', email: '' }
   ]);
   const [duration, setDuration] = useState(30);
   const router = useRouter();
@@ -41,7 +55,7 @@ export const NewEventModal = () => {
 
   const addParticipant = () => {
     const newId = Date.now().toString();
-    setParticipants([...participants, { id: newId, name: '' }]);
+    setParticipants([...participants, { id: newId, name: '', timezone: 'America/New_York', email: '' }]);
   };
 
   const removeParticipant = (id: string) => {
@@ -53,6 +67,18 @@ export const NewEventModal = () => {
   const updateParticipantName = (id: string, name: string) => {
     setParticipants(participants.map(p => 
       p.id === id ? { ...p, name } : p
+    ));
+  };
+
+  const updateParticipantTimezone = (id: string, timezone: string) => {
+    setParticipants(participants.map(p => 
+      p.id === id ? { ...p, timezone } : p
+    ));
+  };
+
+  const updateParticipantEmail = (id: string, email: string) => {
+    setParticipants(participants.map(p => 
+      p.id === id ? { ...p, email } : p
     ));
   };
 
@@ -88,7 +114,7 @@ export const NewEventModal = () => {
     
     // Reset form
     setEventTitle('');
-    setParticipants([{ id: '1', name: '' }]);
+    setParticipants([{ id: '1', name: '', timezone: 'America/New_York', email: '' }]);
     setDuration(30);
   };
 
@@ -159,25 +185,67 @@ export const NewEventModal = () => {
               Participants
             </label>
             <div className="space-y-3">
+              {/* Header row */}
+              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-neutral-500">
+                <div className="col-span-4">Name</div>
+                <div className="col-span-4">Timezone</div>
+                <div className="col-span-3">Email (optional)</div>
+                <div className="col-span-1"></div>
+              </div>
+              
               {participants.map((participant, index) => (
-                <div key={participant.id} className="flex items-center space-x-2">
-                  <Input
-                    value={participant.name}
-                    onChange={(e) => updateParticipantName(participant.id, e.target.value)}
-                    placeholder={`Participant ${index + 1} name`}
-                    className="flex-1"
-                  />
-                  {participants.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeParticipant(participant.id)}
-                      className="text-neutral-400 hover:text-red-500 transition-colors"
+                <div key={participant.id} className="grid grid-cols-12 gap-2 items-center">
+                  {/* Name */}
+                  <div className="col-span-4">
+                    <Input
+                      value={participant.name}
+                      onChange={(e) => updateParticipantName(participant.id, e.target.value)}
+                      placeholder={`Participant ${index + 1}`}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  {/* Timezone */}
+                  <div className="col-span-4">
+                    <select
+                      value={participant.timezone}
+                      onChange={(e) => updateParticipantTimezone(participant.id, e.target.value)}
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded-md text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
-                      ❌
-                    </button>
-                  )}
+                      {majorTimezones.map((tz) => (
+                        <option key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Email */}
+                  <div className="col-span-3">
+                    <Input
+                      type="email"
+                      value={participant.email || ''}
+                      onChange={(e) => updateParticipantEmail(participant.id, e.target.value)}
+                      placeholder="email@example.com"
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  {/* Remove button */}
+                  <div className="col-span-1">
+                    {participants.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(participant.id)}
+                        className="text-neutral-400 hover:text-red-500 transition-colors"
+                      >
+                        ❌
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
+              
               <button
                 type="button"
                 onClick={addParticipant}

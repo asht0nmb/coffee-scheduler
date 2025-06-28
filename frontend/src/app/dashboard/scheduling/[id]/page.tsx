@@ -1,20 +1,40 @@
 'use client';
 
-import { CalendarPlaceholder } from '@/components/dashboard/calendar-placeholder';
+import { SchedulingCalendar } from '@/components/dashboard/scheduling-calendar';
 
-// This would normally come from props.params, but for now we'll use mock data
+// Mock data with exactly 3 time slots per person (algorithm-generated)
+
 export default function SchedulingPage() {
-  // TODO: Load session data based on params.id
-  // For now, using mock data
+  // Enhanced mock data with timezone and algorithm-generated slots
   const mockParticipants = [
-    { id: '1', name: 'John Smith', timeSlots: ['Mon 9-10am', 'Wed 2-3pm'] },
-    { id: '2', name: 'Jane Doe', timeSlots: ['Wed 2-3pm', 'Fri 4-5pm'] },
-    { id: '3', name: 'Mike Jones', timeSlots: ['Mon 9-10am', 'Thu 11-12pm'] },
+    { 
+      id: '1', 
+      name: 'John Smith', 
+      timezone: 'America/Los_Angeles (PT)',
+      timeSlots: ['Mon 9-10am', 'Wed 2-3pm', 'Fri 11-12pm']
+    },
+    { 
+      id: '2', 
+      name: 'Jane Doe', 
+      timezone: 'America/New_York (ET)',
+      timeSlots: ['Mon 9-10am', 'Tue 1-2pm', 'Thu 3-4pm']
+    },
+    { 
+      id: '3', 
+      name: 'Mike Jones', 
+      timezone: 'Europe/London (GMT)',
+      timeSlots: ['Wed 2-3pm', 'Thu 10-11am', 'Fri 4-5pm']
+    },
   ];
 
   const removeTimeSlot = (participantId: string, timeSlot: string) => {
     console.log(`Removing ${timeSlot} for participant ${participantId}`);
     // TODO: Implement time slot removal
+  };
+
+  const handleSlotSelect = (participantId: string, timeSlot: string) => {
+    console.log(`Selected ${timeSlot} for participant ${participantId}`);
+    // TODO: Sync with sidebar chips
   };
 
   return (
@@ -30,9 +50,14 @@ export default function SchedulingPage() {
             <div className="space-y-4">
               {mockParticipants.map((participant) => (
                 <div key={participant.id} className="border-b border-secondary-100 pb-3 last:border-b-0">
-                  <h4 className="font-medium text-neutral-900 mb-2">
-                    • {participant.name}
-                  </h4>
+                  <div className="mb-3">
+                    <h4 className="font-medium text-neutral-900">
+                      • {participant.name}
+                    </h4>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {participant.timezone}
+                    </p>
+                  </div>
                   <div className="space-y-1">
                     {participant.timeSlots.map((timeSlot, index) => (
                       <div
@@ -62,7 +87,10 @@ export default function SchedulingPage() {
         
         {/* Calendar Integration */}
         <div className="lg:col-span-3">
-          <CalendarPlaceholder />
+          <SchedulingCalendar 
+            participants={mockParticipants}
+            onSlotSelect={handleSlotSelect}
+          />
         </div>
       </div>
     </div>
