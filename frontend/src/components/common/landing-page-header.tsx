@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CoffeeIcon } from '@/components/ui/coffee-icon';
 
 export const LandingPageHeader = () => {
   return (
@@ -9,21 +8,21 @@ export const LandingPageHeader = () => {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <CoffeeIcon className="h-6 w-6 text-primary-700" />
-              <span className="text-lg font-display font-semibold text-primary-800">
-                Coffee Scheduler
+              <span className="text-lg text-primary-600">📅</span>
+              <span className="text-lg font-display font-semibold text-neutral-900">
+                Scheduler
               </span>
             </Link>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/#how-it-works"
-              className="text-sm font-body font-medium text-neutral-600 hover:text-primary-700 transition-colors"
+              className="text-sm font-body font-medium text-neutral-600 hover:text-primary-600 transition-colors"
             >
-              How it brews
+              How it works
             </Link>
             <Button asChild size="sm">
-              <Link href="/login">Start Brewing</Link>
+              <Link href="/login">Sign In</Link>
             </Button>
           </nav>
           <div className="md:hidden">

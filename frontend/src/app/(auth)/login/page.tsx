@@ -2,17 +2,17 @@ export default function LoginPage() {
   return (
     <div className="text-center">
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-primary-800">
-          ☕ Coffee Scheduler
+        <h1 className="text-3xl font-display font-bold text-neutral-900">
+          📅 Scheduler
         </h1>
         <p className="mt-2 font-body text-neutral-600">
-          Where great conversations begin with perfect timing
+          Smart scheduling for busy professionals
         </p>
       </div>
 
       <div className="bg-white py-8 px-6 shadow-lg rounded-lg border border-secondary-200">
         <h2 className="text-xl font-display font-semibold text-neutral-900 mb-6">
-          Sign in to start brewing connections
+          Sign in to your account
         </h2>
         
         <button className="w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">

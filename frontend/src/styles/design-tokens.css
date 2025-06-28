@@ -7,7 +7,7 @@
      COLOR PALETTE
      ========================================== */
   
-  /* Primary Brand Colors - Rich Coffee Brown */
+  /* Primary Brand Colors - Rich Coffee Brown (keeping for brand consistency) */
   --color-primary-50: #fdf8f6;
   --color-primary-100: #f2e8e5;
   --color-primary-200: #eaddd7;
@@ -20,31 +20,31 @@
   --color-primary-900: #5d2f0c;
   --color-primary-950: #3f1f08;
 
-  /* Secondary Colors - Warm Cream */
-  --color-secondary-50: #fefdfb;
-  --color-secondary-100: #fefbf6;
-  --color-secondary-200: #fdf6ed;
-  --color-secondary-300: #fcf0e1;
-  --color-secondary-400: #f9e7d1;
-  --color-secondary-500: #f5f5dc;
-  --color-secondary-600: #e8d5b7;
-  --color-secondary-700: #d4b896;
-  --color-secondary-800: #c1a082;
-  --color-secondary-900: #a68b5b;
-  --color-secondary-950: #8b7355;
+  /* Secondary Colors - Black and Gray Scale */
+  --color-secondary-50: #fafafa;
+  --color-secondary-100: #f5f5f5;
+  --color-secondary-200: #e5e5e5;
+  --color-secondary-300: #d4d4d4;
+  --color-secondary-400: #a3a3a3;
+  --color-secondary-500: #737373;
+  --color-secondary-600: #525252;
+  --color-secondary-700: #404040;
+  --color-secondary-800: #262626;
+  --color-secondary-900: #171717;
+  --color-secondary-950: #0a0a0a;
 
-  /* Accent Colors - Energetic Orange */
-  --color-accent-50: #fff7ed;
-  --color-accent-100: #ffedd5;
-  --color-accent-200: #fed7aa;
-  --color-accent-300: #fdba74;
-  --color-accent-400: #fb923c;
-  --color-accent-500: #ff8c00;
-  --color-accent-600: #ea580c;
-  --color-accent-700: #c2410c;
-  --color-accent-800: #9a3412;
-  --color-accent-900: #7c2d12;
-  --color-accent-950: #431407;
+  /* Accent Colors - Blue Scale */
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-300: #93c5fd;
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  --color-accent-700: #1d4ed8;
+  --color-accent-800: #1e40af;
+  --color-accent-900: #1e3a8a;
+  --color-accent-950: #172554;
 
   /* Status Colors */
   --color-success-50: #f0fdf4;
@@ -79,10 +79,10 @@
      SEMANTIC COLORS
      ========================================== */
   
-  /* Background Colors */
-  --color-background: var(--color-neutral-50);
-  --color-background-secondary: var(--color-secondary-50);
-  --color-background-tertiary: var(--color-neutral-100);
+  /* Background Colors - Clean White Backgrounds */
+  --color-background: #ffffff;
+  --color-background-secondary: #fafafa;
+  --color-background-tertiary: #f5f5f5;
   --color-background-card: #ffffff;
   --color-background-overlay: rgba(0, 0, 0, 0.5);
 
@@ -97,7 +97,7 @@
   --color-border-default: var(--color-neutral-200);
   --color-border-secondary: var(--color-neutral-300);
   --color-border-primary: var(--color-primary-300);
-  --color-border-focus: var(--color-primary-500);
+  --color-border-focus: var(--color-accent-500);
 
   /* ==========================================
      TYPOGRAPHY SCALE
@@ -229,7 +229,7 @@
   --input-padding-x: var(--space-3);
   --input-border: 1px solid var(--color-border-default);
   --input-radius: var(--radius-md);
-  --input-focus-ring: 0 0 0 3px rgba(var(--color-primary-500), 0.1);
+  --input-focus-ring: 0 0 0 3px rgba(var(--color-accent-500), 0.1);
 
   /* Navigation */
   --nav-height: 4rem;           /* 64px */
@@ -256,29 +256,20 @@
 }
 
 /* ==========================================
-   DARK MODE OVERRIDES
+   DARK MODE SUPPORT
    ========================================== */
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Background Colors */
-    --color-background: var(--color-neutral-900);
-    --color-background-secondary: var(--color-neutral-800);
-    --color-background-tertiary: var(--color-neutral-700);
-    --color-background-card: var(--color-neutral-800);
-
-    /* Text Colors */
-    --color-text-primary: var(--color-neutral-50);
-    --color-text-secondary: var(--color-neutral-300);
-    --color-text-tertiary: var(--color-neutral-400);
-    --color-text-muted: var(--color-neutral-500);
-
-    /* Border Colors */
-    --color-border-default: var(--color-neutral-700);
-    --color-border-secondary: var(--color-neutral-600);
-
-    /* Component Adjustments */
-    --card-shadow: var(--shadow-lg);
-    --card-border: 1px solid var(--color-border-default);
+    /* Dark mode colors can be added here if needed */
+    --color-background: #0a0a0a;
+    --color-background-secondary: #171717;
+    --color-background-tertiary: #262626;
+    --color-background-card: #171717;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #a3a3a3;
+    --color-text-tertiary: #737373;
+    --color-border-default: #404040;
+    --color-border-secondary: #525252;
   }
 }

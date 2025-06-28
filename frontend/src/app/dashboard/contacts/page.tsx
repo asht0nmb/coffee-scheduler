@@ -3,9 +3,9 @@ export default function ContactsPage() {
     <div className="px-4 py-6 sm:px-0">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-2xl font-display font-semibold text-primary-800">Contacts</h1>
+          <h1 className="text-2xl font-display font-semibold text-neutral-900">Contacts</h1>
           <p className="mt-2 text-sm font-body text-neutral-600">
-            Manage your coffee chat network and brewing preferences.
+            Manage your professional network and meeting preferences.
           </p>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -18,14 +18,14 @@ export default function ContactsPage() {
         </div>
       </div>
       
-      <div className="mt-8 border-2 border-dashed border-secondary-300 bg-white rounded-lg p-8">
+      <div className="mt-8 border-2 border-dashed border-secondary-200 bg-secondary-50 rounded-lg p-8">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 text-accent-500 text-4xl mb-4">
-            ☕
+          <div className="mx-auto h-12 w-12 text-primary-500 text-4xl mb-4">
+            📱
           </div>
-          <h3 className="mt-2 text-sm font-display font-medium text-primary-800">No contacts yet</h3>
+          <h3 className="mt-2 text-sm font-display font-medium text-neutral-900">No contacts yet</h3>
           <p className="mt-1 text-sm font-body text-neutral-500">
-            Start building your coffee chat network by adding your first brewing buddy.
+            Start building your professional network by adding your first contact.
           </p>
         </div>
       </div>
