@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ModalProvider } from "@/contexts/modal-context";
 import { LoginModal } from "@/components/auth/login-modal";
+import { NewEventModal } from "@/components/scheduling/new-event-modal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
             {children}
           </div>
           <LoginModal />
+          <NewEventModal />
         </ModalProvider>
       </body>
     </html>

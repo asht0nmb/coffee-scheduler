@@ -18,12 +18,11 @@ export default function Home() {
               not scheduling
             </h1>
             <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl font-body text-neutral-600">
-              Intelligent scheduling that finds optimal meeting times for you and your contacts. 
-              Seamlessly integrates with your existing calendar.
+              Find times that fit your schedule and theirs. Integrates with your calendar.
             </p>
             <div className="mt-8 sm:mt-10">
               <Button onClick={openLoginModal} size="lg">
-                Get Started
+                Start Connecting
               </Button>
             </div>
              <div className="mt-4 w-24 h-1 bg-primary-500 mx-auto rounded-full" />

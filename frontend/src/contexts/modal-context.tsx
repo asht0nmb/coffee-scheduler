@@ -6,6 +6,9 @@ interface ModalContextType {
   isLoginModalOpen: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  isNewEventModalOpen: boolean;
+  openNewEventModal: () => void;
+  closeNewEventModal: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -24,6 +27,7 @@ interface ModalProviderProps {
 
 export const ModalProvider = ({ children }: ModalProviderProps) => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
 
   const openLoginModal = () => {
     setIsLoginModalOpen(true);
@@ -33,10 +37,21 @@ export const ModalProvider = ({ children }: ModalProviderProps) => {
     setIsLoginModalOpen(false);
   };
 
+  const openNewEventModal = () => {
+    setIsNewEventModalOpen(true);
+  };
+
+  const closeNewEventModal = () => {
+    setIsNewEventModalOpen(false);
+  };
+
   const value = {
     isLoginModalOpen,
     openLoginModal,
     closeLoginModal,
+    isNewEventModalOpen,
+    openNewEventModal,
+    closeNewEventModal,
   };
 
   return (

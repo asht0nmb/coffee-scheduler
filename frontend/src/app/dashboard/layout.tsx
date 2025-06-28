@@ -13,9 +13,18 @@ export default function DashboardLayout({
               <h1 className="text-xl font-display font-semibold text-neutral-900">
                 📅 Scheduler
               </h1>
+              <span className="ml-4 text-sm font-body text-neutral-500">Dashboard</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-body text-neutral-500">Dashboard</span>
+            <div className="flex items-center space-x-3">
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+                <span className="text-sm">👤</span>
+              </button>
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+                <span className="text-sm">⚙️</span>
+              </button>
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+                <span className="text-sm">🚪</span>
+              </button>
             </div>
           </div>
         </div>
