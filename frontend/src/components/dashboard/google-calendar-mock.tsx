@@ -10,6 +10,7 @@ interface CalendarEvent {
   type: 'regular' | 'coffee_chat';
 }
 
+// mock events will be replaced later
 const mockEvents: CalendarEvent[] = [
   {
     id: '1',
@@ -60,14 +61,14 @@ export const GoogleCalendarMock = () => {
 
   return (
     <div 
-      className="bg-white border border-secondary-200 rounded-lg h-96 relative overflow-hidden transition-all duration-300"
+      className="bg-white border border-secondary-200 rounded-lg min-h-[calc(100vh-8rem)] relative overflow-hidden transition-all duration-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Overlay - shown when NOT hovered */}
       <div 
-        className={`absolute inset-0 bg-white flex items-center justify-center transition-opacity duration-300 ${
-          isHovered ? 'opacity-0 pointer-events-none' : 'opacity-80'
+        className={`absolute inset-0 bg-white/85 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 ${
+          isHovered ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
         <div className="text-center">
@@ -86,7 +87,7 @@ export const GoogleCalendarMock = () => {
 
       {/* Actual Calendar - shown when hovered */}
       <div className={`p-4 h-full transition-opacity duration-300 ${
-        isHovered ? 'opacity-100' : 'opacity-0'
+        isHovered ? 'opacity-100' : 'opacity-15'
       }`}>
         {/* Calendar Header */}
         <div className="flex items-center justify-between mb-4">

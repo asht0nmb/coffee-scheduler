@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Caveat:wght@400..700&display=swap');
 @import "tailwindcss";
 @import "../styles/design-tokens.css";
 
@@ -168,9 +169,6 @@
   --box-shadow-inner: var(--shadow-inner);
   --box-shadow-none: var(--shadow-none);
 }
-
-/* Add Google Fonts import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Caveat:wght@400..700&display=swap');
 
 body {
   background: var(--color-background);
