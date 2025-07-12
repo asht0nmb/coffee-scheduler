@@ -4,6 +4,7 @@ import { useModal } from '@/contexts/modal-context';
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimplePopup } from '@/components/ui/simple-popup';
 import { useRouter } from 'next/navigation';
 
 interface Contact {
@@ -31,6 +32,7 @@ export const NewEventModal = () => {
     { id: '1', name: '', timezone: 'America/New_York', email: '' }
   ]);
   const [duration, setDuration] = useState(30);
+  const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +97,7 @@ export const NewEventModal = () => {
     // Validate form - only check contacts now
     const validContacts = contacts.filter(c => c.name.trim());
     if (validContacts.length === 0) {
-      alert('Please add at least one contact');
+      setShowNotification(true);
       return;
     }
 
@@ -163,6 +165,7 @@ export const NewEventModal = () => {
             Set up a new batch :)
           </p> */}
         </div>
+
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -295,6 +298,16 @@ export const NewEventModal = () => {
           </div>
         </form>
       </div>
+
+      {/* Simple Popup */}
+      <SimplePopup
+        show={showNotification}
+        onHide={() => setShowNotification(false)}
+        title="Missing contacts"
+        message="Please add at least one contact to continue with scheduling."
+        type="warning"
+        duration={3000}
+      />
     </div>
   );
 };

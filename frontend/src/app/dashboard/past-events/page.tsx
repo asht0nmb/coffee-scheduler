@@ -1,55 +1,11 @@
 'use client';
 
-interface PastEvent {
-  id: string;
-  title: string;
-  date: Date;
-  duration: number;
-  participants: string[];
-  status: 'completed' | 'cancelled';
-  finalTimeSlot: string;
-}
-
-const mockPastEvents: PastEvent[] = [
-  {
-    id: '1',
-    title: 'Team Coffee Chat',
-    date: new Date(2025, 5, 20, 14, 0), // June 20, 2025 at 2 PM
-    duration: 30,
-    participants: ['John Smith', 'Jane Doe', 'Mike Jones'],
-    status: 'completed',
-    finalTimeSlot: 'Wed 2-3pm'
-  },
-  {
-    id: '2', 
-    title: 'Project Kickoff Meeting',
-    date: new Date(2025, 5, 15, 10, 0), // June 15, 2025 at 10 AM
-    duration: 60,
-    participants: ['Alice Johnson', 'Bob Wilson'],
-    status: 'completed',
-    finalTimeSlot: 'Mon 10-11am'
-  },
-  {
-    id: '3',
-    title: 'Quarterly Review',
-    date: new Date(2025, 5, 10, 15, 0), // June 10, 2025 at 3 PM
-    duration: 45,
-    participants: ['Sarah Lee', 'Tom Brown', 'Lisa Garcia', 'Kevin Chen'],
-    status: 'cancelled',
-    finalTimeSlot: 'Fri 3-4pm'
-  },
-  {
-    id: '4',
-    title: 'Client Demo',
-    date: new Date(2025, 5, 5, 11, 0), // June 5, 2025 at 11 AM
-    duration: 30,
-    participants: ['David Park', 'Emma Wilson'],
-    status: 'completed',
-    finalTimeSlot: 'Thu 11-12pm'
-  }
-];
+import { Event } from '@/types/events';
+import { eventsService } from '@/services/eventsService';
 
 export default function PastEventsPage() {
+  // Get all past events from service
+  const pastEvents: Event[] = eventsService.getAllPastEvents();
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -107,7 +63,7 @@ export default function PastEventsPage() {
 
       {/* Events List */}
       <div className="space-y-4">
-        {mockPastEvents.map((event) => (
+        {pastEvents.map((event) => (
           <div 
             key={event.id}
             className="bg-white border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -187,7 +143,7 @@ export default function PastEventsPage() {
       </div>
 
       {/* Empty State (when no events) */}
-      {mockPastEvents.length === 0 && (
+      {pastEvents.length === 0 && (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📅</div>
           <h3 className="text-xl font-display font-semibold text-neutral-900 mb-2">

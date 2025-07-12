@@ -3,18 +3,13 @@
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { EventSummary } from '@/types/events';
+import { eventsService } from '@/services/eventsService';
 
 interface SidebarMenuProps {
   onNewEvent?: () => void;
 }
 
-interface PastEvent {
-  id: string;
-  participantName: string;
-  date: string;
-  time: string;
-  completed: boolean;
-}
 
 interface PreferenceItem {
   id: string;
@@ -28,72 +23,6 @@ interface PreferenceItem {
   endTime?: string;
 }
 
-// Mock past events data
-const mockPastEvents: PastEvent[] = [
-  {
-    id: '1',
-    participantName: 'John Smith',
-    date: 'Jun 15, 2025',
-    time: '2:00 PM',
-    completed: true
-  },
-  {
-    id: '2',
-    participantName: 'Sarah Johnson',
-    date: 'Jun 12, 2025',
-    time: '10:30 AM',
-    completed: true
-  },
-  {
-    id: '3',
-    participantName: 'Mike Chen',
-    date: 'Jun 8, 2025',
-    time: '3:15 PM',
-    completed: false
-  },
-  {
-    id: '4',
-    participantName: 'Emily Davis',
-    date: 'Jun 5, 2025',
-    time: '11:00 AM',
-    completed: true
-  },
-  {
-    id: '5',
-    participantName: 'Alex Wilson',
-    date: 'May 28, 2025',
-    time: '4:30 PM',
-    completed: true
-  },
-  {
-    id: '5',
-    participantName: 'Alex Wilson',
-    date: 'May 28, 2025',
-    time: '4:30 PM',
-    completed: true
-  },
-  {
-    id: '5',
-    participantName: 'Alex Wilson',
-    date: 'May 28, 2025',
-    time: '4:30 PM',
-    completed: true
-  },
-  {
-    id: '5',
-    participantName: 'Alex Wilson',
-    date: 'May 28, 2025',
-    time: '4:30 PM',
-    completed: true
-  },
-  {
-    id: '6',
-    participantName: 'Lisa Brown',
-    date: 'May 25, 2025',
-    time: '1:45 PM',
-    completed: false
-  }
-];
 
 // Timezone options with US timezones first
 const timezoneOptions = [
@@ -172,6 +101,9 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
   const [isPastEventsExpanded, setIsPastEventsExpanded] = useState(false);
   const [isPreferencesExpanded, setIsPreferencesExpanded] = useState(false);
   const [preferences, setPreferences] = useState(mockPreferences);
+  
+  // Get recent events from service
+  const recentEvents: EventSummary[] = eventsService.getRecentEvents(6);
 
   const handlePastEventsToggle = () => {
     setIsPastEventsExpanded(!isPastEventsExpanded);
@@ -255,7 +187,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
           {/* Past Events List - expands within scrollable area */}
           {isPastEventsExpanded && (
             <div className="mt-2 space-y-2">
-              {mockPastEvents.map((event) => (
+              {recentEvents.map((event) => (
                 <div 
                   key={event.id}
                   className="bg-neutral-50 rounded-md p-3 border border-neutral-200 hover:bg-neutral-100 transition-colors cursor-pointer"
@@ -287,6 +219,16 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
                   </div>
                 </div>
               ))}
+              
+              {/* View All Button */}
+              <Button
+                onClick={() => router.push('/dashboard/past-events')}
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+              >
+                View All Past Events
+              </Button>
             </div>
           )}
         </div>
