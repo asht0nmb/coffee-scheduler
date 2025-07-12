@@ -14,7 +14,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         className={cn(
-          'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none',
+          'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
           {
             'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500': variant === 'primary',
             'bg-secondary-200 text-secondary-900 hover:bg-secondary-300 focus:ring-secondary-500': variant === 'secondary',

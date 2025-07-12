@@ -6,6 +6,7 @@ export interface Event {
   status: 'completed' | 'cancelled' | 'scheduled';
   duration: number;
   finalTimeSlot: string;
+  type?: 'regular' | 'coffee_chat';
   createdAt?: Date;
   updatedAt?: Date;
 }

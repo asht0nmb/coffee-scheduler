@@ -145,7 +145,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
   };
 
   return (
-    <div className="bg-white border border-secondary-200 rounded-lg p-4 h-[calc(100vh-8rem)] flex flex-col">
+    <div className="bg-white border border-secondary-200 rounded-lg p-4 h-auto lg:h-[calc(100vh-8rem)] flex flex-col">
       <h3 className="text-lg font-display font-semibold text-neutral-900 mb-4">
         Menu
       </h3>
@@ -167,7 +167,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
         <div className="flex-shrink-0">
           <button 
             onClick={handlePastEventsToggle}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-body text-neutral-700 hover:bg-neutral-50 rounded-md transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-body text-neutral-700 hover:bg-neutral-50 rounded-md transition-colors cursor-pointer"
           >
             <span className="flex items-center">
               📅 Past Events
@@ -237,7 +237,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
         <div className="flex-shrink-0">
           <button 
             onClick={handlePreferencesToggle}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-body text-neutral-700 hover:bg-neutral-50 rounded-md transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-body text-neutral-700 hover:bg-neutral-50 rounded-md transition-colors cursor-pointer"
           >
             <span className="flex items-center">
               ⚙️ Preferences

@@ -1,6 +1,7 @@
 import { Event } from '@/types/events';
 
 export const mockEvents: Event[] = [
+  // Past Events
   {
     id: '1',
     title: 'Team Coffee Chat',
@@ -9,6 +10,7 @@ export const mockEvents: Event[] = [
     status: 'completed',
     duration: 30,
     finalTimeSlot: 'Mon 2-3pm',
+    type: 'coffee_chat',
     createdAt: new Date(2025, 5, 10),
     updatedAt: new Date(2025, 5, 15)
   },
@@ -20,6 +22,7 @@ export const mockEvents: Event[] = [
     status: 'completed',
     duration: 45,
     finalTimeSlot: 'Thu 10:30-11:15am',
+    type: 'regular',
     createdAt: new Date(2025, 5, 8),
     updatedAt: new Date(2025, 5, 12)
   },
@@ -31,6 +34,7 @@ export const mockEvents: Event[] = [
     status: 'cancelled',
     duration: 60,
     finalTimeSlot: 'Sun 3:15-4:15pm',
+    type: 'regular',
     createdAt: new Date(2025, 5, 5),
     updatedAt: new Date(2025, 5, 8)
   },
@@ -42,6 +46,7 @@ export const mockEvents: Event[] = [
     status: 'completed',
     duration: 30,
     finalTimeSlot: 'Wed 11-12pm',
+    type: 'regular',
     createdAt: new Date(2025, 5, 1),
     updatedAt: new Date(2025, 5, 5)
   },
@@ -53,6 +58,7 @@ export const mockEvents: Event[] = [
     status: 'completed',
     duration: 30,
     finalTimeSlot: 'Tue 4:30-5:00pm',
+    type: 'regular',
     createdAt: new Date(2025, 4, 25),
     updatedAt: new Date(2025, 4, 28)
   },
@@ -64,51 +70,82 @@ export const mockEvents: Event[] = [
     status: 'cancelled',
     duration: 45,
     finalTimeSlot: 'Sat 1:45-2:30pm',
+    type: 'regular',
     createdAt: new Date(2025, 4, 20),
     updatedAt: new Date(2025, 4, 25)
   },
+  
+  // Upcoming Events
   {
-    id: '7',
-    title: 'Product Planning Meeting',
-    participants: ['David Park', 'Emma Wilson'],
-    date: new Date(2025, 4, 22, 9, 0), // May 22, 2025 at 9:00 AM
-    status: 'completed',
+    id: '11',
+    title: 'Team Sync',
+    participants: ['John Doe', 'Jane Smith'],
+    date: new Date(2025, 6, 18, 9, 0), // July 18, 2025 at 9:00 AM
+    status: 'scheduled',
     duration: 60,
-    finalTimeSlot: 'Wed 9-10am',
-    createdAt: new Date(2025, 4, 18),
-    updatedAt: new Date(2025, 4, 22)
+    finalTimeSlot: 'Fri 9-10am',
+    type: 'regular',
+    createdAt: new Date(2025, 6, 10),
+    updatedAt: new Date(2025, 6, 10)
   },
   {
-    id: '8',
-    title: 'Design Review',
-    participants: ['Sophie Chen', 'Marcus Rodriguez', 'Olivia Thompson'],
-    date: new Date(2025, 4, 18, 14, 30), // May 18, 2025 at 2:30 PM
-    status: 'completed',
-    duration: 90,
-    finalTimeSlot: 'Sat 2:30-4:00pm',
-    createdAt: new Date(2025, 4, 15),
-    updatedAt: new Date(2025, 4, 18)
+    id: '12',
+    title: 'Coffee with Sarah',
+    participants: ['Sarah Wilson'],
+    date: new Date(2025, 6, 20, 14, 0), // July 20, 2025 at 2:00 PM
+    status: 'scheduled',
+    duration: 30,
+    finalTimeSlot: 'Sun 2-2:30pm',
+    type: 'coffee_chat',
+    createdAt: new Date(2025, 6, 12),
+    updatedAt: new Date(2025, 6, 12)
   },
   {
-    id: '9',
-    title: 'Client Onboarding',
-    participants: ['James Kim', 'Rachel Adams'],
-    date: new Date(2025, 4, 15, 10, 0), // May 15, 2025 at 10:00 AM
-    status: 'completed',
+    id: '13',
+    title: 'Project Review',
+    participants: ['Mike Johnson', 'Emily Chen'],
+    date: new Date(2025, 6, 22, 11, 0), // July 22, 2025 at 11:00 AM
+    status: 'scheduled',
     duration: 45,
-    finalTimeSlot: 'Wed 10-10:45am',
-    createdAt: new Date(2025, 4, 12),
-    updatedAt: new Date(2025, 4, 15)
+    finalTimeSlot: 'Tue 11-11:45am',
+    type: 'regular',
+    createdAt: new Date(2025, 6, 14),
+    updatedAt: new Date(2025, 6, 14)
   },
   {
-    id: '10',
-    title: 'Sprint Retrospective',
-    participants: ['Thomas Lee', 'Isabella Garcia', 'Kevin Martinez', 'Ava Singh'],
-    date: new Date(2025, 4, 12, 16, 0), // May 12, 2025 at 4:00 PM
-    status: 'completed',
-    duration: 60,
-    finalTimeSlot: 'Sun 4-5pm',
-    createdAt: new Date(2025, 4, 8),
-    updatedAt: new Date(2025, 4, 12)
+    id: '14',
+    title: 'Coffee Break Chat',
+    participants: ['Alex Thompson'],
+    date: new Date(2025, 6, 25, 15, 30), // July 25, 2025 at 3:30 PM
+    status: 'scheduled',
+    duration: 30,
+    finalTimeSlot: 'Fri 3:30-4pm',
+    type: 'coffee_chat',
+    createdAt: new Date(2025, 6, 16),
+    updatedAt: new Date(2025, 6, 16)
+  },
+  {
+    id: '15',
+    title: 'Weekly Standup',
+    participants: ['Team Alpha'],
+    date: new Date(2025, 6, 28, 10, 0), // July 28, 2025 at 10:00 AM
+    status: 'scheduled',
+    duration: 30,
+    finalTimeSlot: 'Mon 10-10:30am',
+    type: 'regular',
+    createdAt: new Date(2025, 6, 18),
+    updatedAt: new Date(2025, 6, 18)
+  },
+  {
+    id: '16',
+    title: 'Client Presentation',
+    participants: ['David Kim', 'Lisa Rodriguez', 'Tom Wilson'],
+    date: new Date(2025, 7, 2, 14, 0), // August 2, 2025 at 2:00 PM
+    status: 'scheduled',
+    duration: 90,
+    finalTimeSlot: 'Sat 2-3:30pm',
+    type: 'regular',
+    createdAt: new Date(2025, 6, 20),
+    updatedAt: new Date(2025, 6, 20)
   }
 ];

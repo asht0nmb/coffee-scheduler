@@ -53,6 +53,62 @@ export class EventsService {
   }
 
   /**
+   * Get upcoming events (scheduled events in the future)
+   * @param limit Number of events to return (default: unlimited)
+   * @returns Array of upcoming events
+   */
+  static getUpcomingEvents(limit?: number): Event[] {
+    const now = new Date();
+    const upcomingEvents = mockEvents
+      .filter(event => event.status === 'scheduled' && event.date > now)
+      .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort ascending for upcoming
+    
+    return limit ? upcomingEvents.slice(0, limit) : upcomingEvents;
+  }
+
+  /**
+   * Get all scheduled events (both past and future scheduled events)
+   * @returns Array of all scheduled events
+   */
+  static getScheduledEvents(): Event[] {
+    return mockEvents
+      .filter(event => event.status === 'scheduled')
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  /**
+   * Get events for a specific week (for calendar display)
+   * @param weekStartDate Start date of the week
+   * @returns Array of events within that week
+   */
+  static getEventsForWeek(weekStartDate: Date): Event[] {
+    const weekEnd = new Date(weekStartDate);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return mockEvents
+      .filter(event => event.date >= weekStartDate && event.date <= weekEnd)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  /**
+   * Get events for a specific day
+   * @param targetDate The date to get events for
+   * @returns Array of events on that day
+   */
+  static getEventsForDay(targetDate: Date): Event[] {
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    return mockEvents
+      .filter(event => event.date >= dayStart && event.date <= dayEnd)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  /**
    * Get events within a date range
    * @param startDate Start date
    * @param endDate End date
@@ -81,6 +137,26 @@ export class EventsService {
     });
 
     return counts;
+  }
+
+  /**
+   * Helper method to check if an event is upcoming
+   * @param event Event to check
+   * @returns True if event is scheduled and in the future
+   */
+  static isUpcoming(event: Event): boolean {
+    const now = new Date();
+    return event.status === 'scheduled' && event.date > now;
+  }
+
+  /**
+   * Helper method to check if an event is past
+   * @param event Event to check  
+   * @returns True if event date is in the past
+   */
+  static isPast(event: Event): boolean {
+    const now = new Date();
+    return event.date < now;
   }
 }
 
