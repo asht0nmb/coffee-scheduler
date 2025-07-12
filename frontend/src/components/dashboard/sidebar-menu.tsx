@@ -222,7 +222,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
               
               {/* View All Button */}
               <Button
-                onClick={() => router.push('/dashboard/past-events')}
+                onClick={() => router.push('/dashboard/events?view=past')}
                 variant="outline"
                 size="sm"
                 className="w-full mt-2 text-neutral-600 border-neutral-200 hover:bg-neutral-50"

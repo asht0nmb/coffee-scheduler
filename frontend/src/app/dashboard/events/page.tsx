@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Event } from '@/types/events';
 import { eventsService } from '@/services/eventsService';
 import { EventDetails } from '@/components/events/event-details-modal';
 
 type ViewMode = 'past' | 'upcoming';
 
-export default function PastEventsPage() {
+export default function EventsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeView, setActiveView] = useState<ViewMode>('past');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -19,6 +20,8 @@ export default function PastEventsPage() {
     const viewParam = searchParams.get('view');
     if (viewParam === 'upcoming') {
       setActiveView('upcoming');
+    } else if (viewParam === 'past') {
+      setActiveView('past');
     }
     setIsMounted(true);
   }, [searchParams]);
@@ -100,7 +103,7 @@ export default function PastEventsPage() {
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-2">
           <button 
-            onClick={() => window.history.back()}
+            onClick={() => router.push('/dashboard')}
             className="text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,7 +123,7 @@ export default function PastEventsPage() {
       <div className="mb-6 relative">
         <div className="bg-neutral-100 p-1 rounded-lg inline-flex">
           <button
-            onClick={() => setActiveView('past')}
+            onClick={() => router.push('/dashboard/events?view=past')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer ${
               activeView === 'past'
                 ? 'bg-white text-neutral-900 shadow-sm'
@@ -130,7 +133,7 @@ export default function PastEventsPage() {
             Past Events
           </button>
           <button
-            onClick={() => setActiveView('upcoming')}
+            onClick={() => router.push('/dashboard/events?view=upcoming')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer ${
               activeView === 'upcoming'
                 ? 'bg-white text-neutral-900 shadow-sm'
@@ -260,7 +263,7 @@ export default function PastEventsPage() {
             }
           </p>
           <button 
-            onClick={() => window.history.back()}
+            onClick={() => router.push('/dashboard')}
             className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 transition-colors cursor-pointer"
           >
             ← Back to Dashboard

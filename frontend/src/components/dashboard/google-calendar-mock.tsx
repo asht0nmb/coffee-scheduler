@@ -93,7 +93,7 @@ export const GoogleCalendarMock = () => {
           <div className="flex items-center space-x-2">
             {/* Upcoming Events Button */}
             <button
-              onClick={() => router.push('/dashboard/past-events?view=upcoming')}
+              onClick={() => router.push('/dashboard/events?view=upcoming')}
               className="inline-flex items-center px-3 py-1 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors duration-200"
             >
               <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
