@@ -54,7 +54,6 @@ export function HamburgerMenu({ className = '' }: HamburgerMenuProps) {
   const handleSignOut = () => {
     setIsOpen(false);
     // TODO: Implement sign out logic
-    console.log('Sign out clicked');
   };
 
   const menuItems = [

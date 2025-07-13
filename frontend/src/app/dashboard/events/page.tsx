@@ -83,15 +83,8 @@ function EventsPageContent() {
   };
   
   const handleViewDetails = (event: Event) => {
-    console.log('View Details clicked for event:', event.id);
-    console.log('Setting selectedEvent to:', event);
     setSelectedEvent(event);
   };
-  
-  // Debug selected event changes
-  useEffect(() => {
-    console.log('selectedEvent changed:', selectedEvent);
-  }, [selectedEvent]);
   
   const handleCloseDetails = () => {
     setSelectedEvent(null);
@@ -210,10 +203,7 @@ function EventsPageContent() {
               <div className="flex space-x-3">
                 {isMounted && (
                   <div 
-                    onClick={() => {
-                      console.log('Div clicked!', event.id);
-                      handleViewDetails(event);
-                    }}
+                    onClick={() => handleViewDetails(event)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {

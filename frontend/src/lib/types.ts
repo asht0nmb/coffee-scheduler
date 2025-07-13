@@ -8,7 +8,7 @@ export interface User {
   _id: string;
 }
 
-// Contact types
+// Contact types - Full contact from backend/database
 export interface Contact {
   _id: string;
   userId: string;
@@ -22,6 +22,21 @@ export interface Contact {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+// Simplified contact for form inputs and UI
+export interface NewContact {
+  id: string;
+  name: string;
+  timezone: string;
+  email?: string;
+}
+
+// Base contact interface with common fields
+export interface BaseContact {
+  name: string;
+  email: string;
+  timezone: string;
 }
 
 // Time slot types

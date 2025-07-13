@@ -9,7 +9,6 @@ interface EventDetailsProps {
 }
 
 export const EventDetails = ({ event, onClose }: EventDetailsProps) => {
-  console.log('EventDetails component rendering with event:', event);
   
   // Close on escape key
   useEffect(() => {
@@ -25,7 +24,6 @@ export const EventDetails = ({ event, onClose }: EventDetailsProps) => {
   }, [onClose]);
 
   if (!event) {
-    console.log('EventDetails: No event provided, returning null');
     return null;
   }
 

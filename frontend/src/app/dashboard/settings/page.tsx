@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+  TIMEZONE_OPTIONS, 
+  DEFAULT_TIMEZONE,
+  DEFAULT_VALUES,
+  APP_CONSTANTS 
+} from '@/constants';
 
 interface UserSettings {
   // Account Settings
@@ -35,35 +41,6 @@ interface UserSettings {
   };
 }
 
-const timezoneOptions = [
-  // US Timezones
-  { value: 'America/New_York', label: 'Eastern Time (EST/EDT)' },
-  { value: 'America/Chicago', label: 'Central Time (CST/CDT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MST/MDT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PST/PDT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKST/AKDT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
-  // International
-  { value: 'Europe/London', label: 'London (GMT/BST)' },
-  { value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
-  { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
-  { value: 'Europe/Rome', label: 'Rome (CET/CEST)' },
-  { value: 'Europe/Madrid', label: 'Madrid (CET/CEST)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { value: 'Asia/Seoul', label: 'Seoul (KST)' },
-  { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
-  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-  { value: 'Asia/Mumbai', label: 'Mumbai (IST)' },
-  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEDT/AEST)' },
-  { value: 'Australia/Melbourne', label: 'Melbourne (AEDT/AEST)' },
-  { value: 'Pacific/Auckland', label: 'Auckland (NZDT/NZST)' },
-  { value: 'America/Toronto', label: 'Toronto (EST/EDT)' },
-  { value: 'America/Vancouver', label: 'Vancouver (PST/PDT)' },
-  { value: 'America/Sao_Paulo', label: 'São Paulo (BRT)' },
-  { value: 'America/Mexico_City', label: 'Mexico City (CST/CDT)' }
-];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -78,19 +55,19 @@ export default function SettingsPage() {
       loginNotifications: true
     },
     preferences: {
-      timezone: 'America/New_York',
-      defaultDuration: 30,
+      timezone: DEFAULT_TIMEZONE,
+      defaultDuration: DEFAULT_VALUES.DURATION,
       workingHours: {
-        start: '09:00',
-        end: '17:00'
+        start: DEFAULT_VALUES.WORKING_HOURS.START,
+        end: DEFAULT_VALUES.WORKING_HOURS.END
       },
       emailNotifications: true,
-      reminderTime: 15,
+      reminderTime: DEFAULT_VALUES.REMINDER_TIME,
       weekendAvailability: false
     },
     advanced: {
-      syncFrequency: 'hourly',
-      dataRetention: 365,
+      syncFrequency: DEFAULT_VALUES.SYNC_FREQUENCY,
+      dataRetention: DEFAULT_VALUES.DATA_RETENTION,
       analyticsEnabled: true,
       betaFeatures: false
     }
@@ -103,7 +80,7 @@ export default function SettingsPage() {
     // Simulate API call
     setTimeout(() => {
       setIsSaving(false);
-      setSaveMessage('Settings saved successfully!');
+      setSaveMessage(APP_CONSTANTS.SUCCESS_SAVE);
       setTimeout(() => setSaveMessage(''), 3000);
     }, 1000);
   };
@@ -279,7 +256,7 @@ export default function SettingsPage() {
                           onChange={(e) => updateSetting('preferences', 'timezone', e.target.value)}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-md font-body focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         >
-                          {timezoneOptions.map((tz) => (
+                          {TIMEZONE_OPTIONS.map((tz) => (
                             <option key={tz.value} value={tz.value}>
                               {tz.label}
                             </option>
@@ -519,7 +496,7 @@ export default function SettingsPage() {
         <h4 className="text-sm font-medium text-neutral-700 mb-2">Current Settings Summary:</h4>
         <div className="text-xs text-neutral-600 space-y-1">
           <p>• Account: {settings.account.name} ({settings.account.email})</p>
-          <p>• Timezone: {timezoneOptions.find(tz => tz.value === settings.preferences.timezone)?.label}</p>
+          <p>• Timezone: {TIMEZONE_OPTIONS.find(tz => tz.value === settings.preferences.timezone)?.label}</p>
           <p>• Working Hours: {settings.preferences.workingHours.start} - {settings.preferences.workingHours.end}</p>
           <p>• Default Duration: {settings.preferences.defaultDuration} minutes</p>
           <p>• Sync Frequency: {settings.advanced.syncFrequency}</p>

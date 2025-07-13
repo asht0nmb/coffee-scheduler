@@ -1,63 +1,39 @@
 'use client';
 
 import { useModal } from '@/contexts/modal-context';
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SimplePopup } from '@/components/ui/simple-popup';
 import { useRouter } from 'next/navigation';
-
-interface Contact {
-  id: string;
-  name: string;
-  timezone: string;
-  email?: string;
-}
-
-const majorTimezones = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'Europe/London', label: 'GMT (London)' },
-  { value: 'Europe/Paris', label: 'CET (Paris)' },
-  { value: 'Asia/Tokyo', label: 'JST (Tokyo)' },
-  { value: 'Asia/Shanghai', label: 'CST (Shanghai)' },
-  { value: 'Australia/Sydney', label: 'AEST (Sydney)' }
-];
+import { 
+  MAJOR_TIMEZONE_OPTIONS, 
+  DEFAULT_TIMEZONE, 
+  DEFAULT_DURATION,
+  APP_CONSTANTS
+} from '@/constants';
+import { NewContact } from '@/lib/types';
+import { useModalEscape } from '@/hooks/useModalEscape';
 
 export const NewEventModal = () => {
   const { isNewEventModalOpen, closeNewEventModal } = useModal();
-  const [contacts, setContacts] = useState<Contact[]>([
-    { id: '1', name: '', timezone: 'America/New_York', email: '' }
+  const [contacts, setContacts] = useState<NewContact[]>([
+    { id: '1', name: '', timezone: DEFAULT_TIMEZONE, email: '' }
   ]);
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Close modal on ESC key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isNewEventModalOpen) {
-        closeNewEventModal();
-      }
-    };
-
-    if (isNewEventModalOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isNewEventModalOpen, closeNewEventModal]);
+  // Use the reusable modal escape hook
+  useModalEscape({
+    isOpen: isNewEventModalOpen,
+    onClose: closeNewEventModal,
+  });
 
   const addContact = () => {
     const newId = Date.now().toString();
-    setContacts([...contacts, { id: newId, name: '', timezone: 'America/New_York', email: '' }]);
+    setContacts([...contacts, { id: newId, name: '', timezone: DEFAULT_TIMEZONE, email: '' }]);
     
     // Auto-scroll to bottom when adding contact if in scroll mode
     setTimeout(() => {
@@ -105,19 +81,14 @@ export const NewEventModal = () => {
     const sessionId = Date.now().toString();
     
     // TODO: Save session data to state/storage
-    console.log('Creating session:', {
-      id: sessionId,
-      contacts: validContacts,
-      duration
-    });
 
     // Close modal and navigate to scheduling view
     closeNewEventModal();
     router.push(`/dashboard/scheduling/${sessionId}`);
     
     // Reset form
-    setContacts([{ id: '1', name: '', timezone: 'America/New_York', email: '' }]);
-    setDuration(30);
+    setContacts([{ id: '1', name: '', timezone: DEFAULT_TIMEZONE, email: '' }]);
+    setDuration(DEFAULT_DURATION);
   };
 
   if (!isNewEventModalOpen) return null;
@@ -212,7 +183,7 @@ export const NewEventModal = () => {
                         onChange={(e) => updateContactTimezone(contact.id, e.target.value)}
                         className="w-full h-9 px-3 py-2 border border-neutral-300 rounded-md text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       >
-                        {majorTimezones.map((tz) => (
+                        {MAJOR_TIMEZONE_OPTIONS.map((tz) => (
                           <option key={tz.value} value={tz.value}>
                             {tz.label}
                           </option>
@@ -304,7 +275,7 @@ export const NewEventModal = () => {
         show={showNotification}
         onHide={() => setShowNotification(false)}
         title="Missing contacts"
-        message="Please add at least one contact to continue with scheduling."
+        message={APP_CONSTANTS.ERROR_VALIDATION}
         type="warning"
         duration={3000}
       />

@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { EventSummary } from '@/types/events';
 import { eventsService } from '@/services/eventsService';
+import { 
+  TIMEZONE_OPTIONS, 
+  DURATION_OPTIONS,
+  DEFAULT_TIMEZONE,
+  DEFAULT_VALUES,
+  APP_CONSTANTS 
+} from '@/constants';
 
 interface SidebarMenuProps {
   onNewEvent?: () => void;
@@ -24,46 +31,12 @@ interface PreferenceItem {
 }
 
 
-// Timezone options with US timezones first
-const timezoneOptions = [
-  // US Timezones
-  { value: 'America/New_York', label: 'Eastern Time (EST/EDT)' },
-  { value: 'America/Chicago', label: 'Central Time (CST/CDT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MST/MDT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PST/PDT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKST/AKDT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
-  // International
-  { value: 'Europe/London', label: 'London (GMT/BST)' },
-  { value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
-  { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
-  { value: 'Europe/Rome', label: 'Rome (CET/CEST)' },
-  { value: 'Europe/Madrid', label: 'Madrid (CET/CEST)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { value: 'Asia/Seoul', label: 'Seoul (KST)' },
-  { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
-  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-  { value: 'Asia/Mumbai', label: 'Mumbai (IST)' },
-  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEDT/AEST)' },
-  { value: 'Australia/Melbourne', label: 'Melbourne (AEDT/AEST)' },
-  { value: 'Pacific/Auckland', label: 'Auckland (NZDT/NZST)' },
-  { value: 'America/Toronto', label: 'Toronto (EST/EDT)' },
-  { value: 'America/Vancouver', label: 'Vancouver (PST/PDT)' },
-  { value: 'America/Sao_Paulo', label: 'São Paulo (BRT)' },
-  { value: 'America/Mexico_City', label: 'Mexico City (CST/CDT)' }
-];
 
-// Duration options
-const durationOptions = [
-  { value: '15', label: '15 minutes' },
-  { value: '20', label: '20 minutes' },
-  { value: '25', label: '25 minutes' },
-  { value: '30', label: '30 minutes' },
-  { value: '45', label: '45 minutes' },
-  { value: '60', label: '1 hour' }
-];
+// Transform duration options to match expected format
+const sidebarDurationOptions = DURATION_OPTIONS.map(option => ({
+  value: option.value.toString(),
+  label: option.label
+}));
 
 // Mock preferences data
 const mockPreferences: PreferenceItem[] = [
@@ -73,26 +46,26 @@ const mockPreferences: PreferenceItem[] = [
     description: '',
     type: 'time-range',
     icon: '⏰',
-    startTime: '09:00',
-    endTime: '17:00'
+    startTime: DEFAULT_VALUES.WORKING_HOURS.START,
+    endTime: DEFAULT_VALUES.WORKING_HOURS.END
   },
   {
     id: '2',
     label: 'Time Zone',
     description: '',
     type: 'select',
-    value: 'America/New_York',
+    value: DEFAULT_TIMEZONE,
     icon: '🌍',
-    options: timezoneOptions
+    options: TIMEZONE_OPTIONS
   },
   {
     id: '3',
     label: 'Default Duration',
     description: '',
     type: 'select',
-    value: '30',
+    value: DEFAULT_VALUES.DURATION.toString(),
     icon: '⏱️',
-    options: durationOptions
+    options: sidebarDurationOptions
   }
 ];
 
@@ -147,7 +120,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
   return (
     <div className="bg-white border border-secondary-200 rounded-lg p-4 h-auto lg:h-[calc(100vh-8rem)] flex flex-col">
       <h3 className="text-lg font-display font-semibold text-neutral-900 mb-4">
-        Menu
+        {APP_CONSTANTS.MENU_TITLE}
       </h3>
       
       {/* Fixed header section - always visible */}
@@ -157,7 +130,7 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
           className="w-full justify-start"
           size="sm"
         >
-          ✨ New Event
+          {APP_CONSTANTS.CTA_NEW_EVENT}
         </Button>
       </div>
       

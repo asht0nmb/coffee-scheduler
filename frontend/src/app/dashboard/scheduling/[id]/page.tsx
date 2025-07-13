@@ -65,7 +65,6 @@ export default function SchedulingPage() {
   };
 
   const handleDragStart = (e: React.DragEvent, timeSlot: string, participantId: string) => {
-    console.log('Drag start:', timeSlot, 'from participant:', participantId);
     const dragData = { timeSlot, participantId };
     e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
     setDraggedSlot(dragData);
@@ -98,12 +97,10 @@ export default function SchedulingPage() {
 
   const handleHamburgerHover = (participantId: string, timeSlot: string) => {
     const slotId = `${participantId}-${timeSlot}`;
-    console.log('Hamburger hovered - activating interaction zone:', slotId);
     setActiveInteractionZone(slotId);
   };
 
   const handleInteractionZoneLeave = () => {
-    console.log('Interaction zone left - deactivating');
     setActiveInteractionZone(null);
   };
 
@@ -123,8 +120,8 @@ export default function SchedulingPage() {
   };
 
   const handleSlotSelect = (participantId: string, timeSlot: string) => {
-    console.log(`Selected ${timeSlot} for participant ${participantId}`);
-    // TODO: Sync with sidebar chips
+    // TODO: Implement slot selection logic - sync with sidebar chips
+    console.debug('Slot selected:', { participantId, timeSlot });
   };
 
   const handleExitClick = () => {
@@ -211,7 +208,6 @@ export default function SchedulingPage() {
                       
                       // Debug logging
                       if (isInteractionActive) {
-                        console.log('Interaction zone active for:', slotId);
                       }
                       
                       return (
@@ -227,7 +223,6 @@ export default function SchedulingPage() {
                         <div 
                           className="flex items-center gap-1 min-w-[80px] justify-end"
                           onMouseLeave={() => {
-                            console.log('Interaction zone left completely');
                             handleInteractionZoneLeave();
                           }}
                         >
@@ -264,7 +259,6 @@ export default function SchedulingPage() {
                           {isInteractionActive && !isPendingDelete && (
                             <Button
                               onClick={() => {
-                                console.log('X button clicked for:', participant.id, timeSlot);
                                 handleDeleteClick(participant.id, timeSlot);
                               }}
                               variant="ghost"
@@ -282,7 +276,6 @@ export default function SchedulingPage() {
                           <div
                             draggable
                             onDragStart={(e) => {
-                              console.log('Drag started for:', participant.id, timeSlot);
                               handleDragStart(e, timeSlot, participant.id);
                             }}
                             onDragEnd={handleDragEnd}
