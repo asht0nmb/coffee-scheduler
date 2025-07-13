@@ -107,19 +107,11 @@ export function HamburgerMenu({ className = '' }: HamburgerMenuProps) {
             {menuItems.map((item, index) => (
               <button
                 key={index}
-                onClick={() => item.isPlaceholder ? null : handleMenuItemClick(item.href)}
-                className={`w-full flex items-center px-4 py-3 text-left text-sm font-body transition-colors ${
-                  item.isPlaceholder 
-                    ? 'text-neutral-400 cursor-not-allowed' 
-                    : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer'
-                }`}
-                disabled={item.isPlaceholder}
+                onClick={() => handleMenuItemClick(item.href)}
+                className="w-full flex items-center px-4 py-3 text-left text-sm font-body transition-colors text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer"
               >
                 <span className="mr-3 text-base">{item.icon}</span>
                 <span className="font-medium">{item.label}</span>
-                {item.isPlaceholder && (
-                  <span className="ml-auto text-xs text-neutral-400">Soon</span>
-                )}
               </button>
             ))}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Event } from '@/types/events';
 import { eventsService } from '@/services/eventsService';
@@ -8,7 +8,7 @@ import { EventDetails } from '@/components/events/event-details-modal';
 
 type ViewMode = 'past' | 'upcoming';
 
-export default function EventsPage() {
+function EventsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeView, setActiveView] = useState<ViewMode>('past');
@@ -293,5 +293,13 @@ export default function EventsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-6">Loading...</div>}>
+      <EventsPageContent />
+    </Suspense>
   );
 }

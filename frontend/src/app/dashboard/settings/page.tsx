@@ -111,7 +111,7 @@ export default function SettingsPage() {
   const updateSetting = <T extends keyof UserSettings>(
     section: T,
     key: keyof UserSettings[T],
-    value: any
+    value: UserSettings[T][keyof UserSettings[T]]
   ) => {
     setSettings(prev => ({
       ...prev,
@@ -409,7 +409,7 @@ export default function SettingsPage() {
                         </label>
                         <select
                           value={settings.advanced.syncFrequency}
-                          onChange={(e) => updateSetting('advanced', 'syncFrequency', e.target.value)}
+                          onChange={(e) => updateSetting('advanced', 'syncFrequency', e.target.value as 'realtime' | 'hourly' | 'daily')}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-md font-body focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         >
                           <option value="realtime">Real-time</option>
