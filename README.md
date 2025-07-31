@@ -1,7 +1,7 @@
-## In-progress - expected completion: August 2025 
+## **In-progress - expected completion: August 2025**
 
 ## Coffee Chat Scheduler
-For when you send 8 cofee chat emails and don't know how to find 24 potential times
+For when you send 8 coffee chat emails and don't know how you are going to find 24 potential times, let alone remember not to double-book.
 
 * Pending events logs
 * GCal integration
