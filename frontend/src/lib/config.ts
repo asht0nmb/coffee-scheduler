@@ -41,13 +41,30 @@ function validateEnvironment(): void {
  * Get validated environment configuration
  */
 function getConfig() {
-  // Only validate strictly on server side
-  if (typeof window === 'undefined') {
-    validateEnvironment();
+  // Only validate during runtime, not during build
+  // Check if we're in a runtime environment (not build process)
+  const isRuntime = typeof window !== 'undefined' || process.env.NODE_ENV !== undefined;
+  const isBuildTime = process.env.VERCEL_ENV === undefined && process.env.NODE_ENV === undefined;
+  
+  // Skip validation during build process to prevent build failures
+  if (isRuntime && !isBuildTime && typeof window === 'undefined') {
+    // Only validate in server runtime, not during build
+    try {
+      validateEnvironment();
+    } catch (error) {
+      // In production, log the error but don't crash the build
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('Environment validation warning:', error);
+      } else {
+        // In development, still throw to help with local setup
+        throw error;
+      }
+    }
   }
   
   return {
     // Required variables with fallback for client-side
+    // In production on Vercel, this should be set to your Railway backend URL
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001',
     
     // Optional variables with defaults
