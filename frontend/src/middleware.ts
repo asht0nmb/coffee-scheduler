@@ -2,27 +2,48 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Middleware to handle authentication and route protection
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require authentication
-  // const publicRoutes = ['/login', '/'];
-  // const isPublicRoute = publicRoutes.includes(pathname);
+  // All routes except dashboard are handled by letting them pass through
 
-  // If accessing dashboard routes, check authentication
+  // If accessing dashboard routes, check authentication with backend
   if (pathname.startsWith('/dashboard')) {
-    // In a real app, you'd check for authentication tokens/cookies here
-    // For now, we'll allow access to dashboard routes
-    // TODO: Add proper authentication check
-    
-    // Example authentication check (commented out):
-    // const authToken = request.cookies.get('auth-token');
-    // if (!authToken) {
-    //   return NextResponse.redirect(new URL('/login', request.url));
-    // }
+    try {
+      // Get API URL from environment or use default
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      
+      // Check authentication status with backend
+      const response = await fetch(`${apiUrl}/api/auth/status`, {
+        method: 'GET',
+        headers: {
+          'Cookie': request.headers.get('cookie') || '',
+        },
+      });
+
+      if (!response.ok || response.status === 401) {
+        // Not authenticated, redirect to login
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      const data = await response.json();
+      
+      if (!data.authenticated || !data.user) {
+        // No valid session, redirect to login
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      // Authentication successful, allow access
+      return NextResponse.next();
+
+    } catch (error) {
+      console.error('Middleware auth check failed:', error);
+      // On error, redirect to login for security
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
-  // Allow the request to continue
+  // Allow access to public routes
   return NextResponse.next();
 }
 

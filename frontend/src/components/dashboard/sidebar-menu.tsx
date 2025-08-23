@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EventSummary } from '@/types/events';
 import { eventsService } from '@/services/eventsService';
 import { 
@@ -75,8 +75,27 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
   const [isPreferencesExpanded, setIsPreferencesExpanded] = useState(false);
   const [preferences, setPreferences] = useState(mockPreferences);
   
-  // Get recent events from service
-  const recentEvents: EventSummary[] = eventsService.getRecentEvents(6);
+  // State for recent events
+  const [recentEvents, setRecentEvents] = useState<EventSummary[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+
+  // Load recent events from service
+  useEffect(() => {
+    const loadRecentEvents = async () => {
+      setIsLoadingEvents(true);
+      try {
+        const events = await eventsService.getRecentEvents(6);
+        setRecentEvents(events);
+      } catch (error) {
+        console.error('Failed to load recent events:', error);
+        setRecentEvents([]); // Fallback to empty array
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    loadRecentEvents();
+  }, []);
 
   const handlePastEventsToggle = () => {
     setIsPastEventsExpanded(!isPastEventsExpanded);
@@ -160,7 +179,14 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
           {/* Past Events List - expands within scrollable area */}
           {isPastEventsExpanded && (
             <div className="mt-2 space-y-2">
-              {recentEvents.map((event) => (
+              {isLoadingEvents ? (
+                <div className="animate-pulse space-y-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 bg-neutral-200 rounded"></div>
+                  ))}
+                </div>
+              ) : recentEvents.length > 0 ? (
+                recentEvents.map((event) => (
                 <div 
                   key={event.id}
                   className="bg-neutral-50 rounded-md p-3 border border-neutral-200 hover:bg-neutral-100 transition-colors cursor-pointer"
@@ -191,17 +217,23 @@ export const SidebarMenu = ({ onNewEvent }: SidebarMenuProps) => {
                     </div>
                   </div>
                 </div>
-              ))}
+                ))) : (
+                <div className="text-center text-neutral-500 text-sm py-4">
+                  No recent events
+                </div>
+              )}
               
               {/* View All Button */}
-              <Button
-                onClick={() => router.push('/dashboard/events?view=past')}
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 text-neutral-600 border-neutral-200 hover:bg-neutral-50"
-              >
-                View All Past Events
-              </Button>
+              {!isLoadingEvents && (
+                <Button
+                  onClick={() => router.push('/dashboard/events?view=past')}
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2 text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                >
+                  View All Past Events
+                </Button>
+              )}
             </div>
           )}
         </div>

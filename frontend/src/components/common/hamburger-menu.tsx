@@ -68,6 +68,11 @@ export function HamburgerMenu({ className = '' }: HamburgerMenuProps) {
       icon: '📝'
     },
     { 
+      label: 'Pending Events', 
+      href: '/dashboard/pending-events',
+      icon: '⏳'
+    },
+    { 
       label: 'Settings', 
       href: '/dashboard/settings',
       icon: '⚙️'
@@ -100,7 +105,7 @@ export function HamburgerMenu({ className = '' }: HamburgerMenuProps) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-neutral-200 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-neutral-200 rounded-lg shadow-lg z-[60]">
           <div className="py-2">
             {/* Menu Items */}
             {menuItems.map((item, index) => (

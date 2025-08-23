@@ -1,22 +1,73 @@
 import { Event, EventSummary, eventToSummary } from '@/types/events';
 import { mockEvents } from '@/data/mockEvents';
+import { apiAdapter } from '@/lib/api-adapter';
 
 /**
  * Events Service
  * 
  * This service provides a centralized API for event data management.
- * Currently uses mock data, but can easily be replaced with real API calls
- * when backend integration is ready.
+ * Now integrated with the backend API via the API adapter layer.
  */
 export class EventsService {
+  // Cache for events to reduce API calls
+  private static eventsCache: Event[] = [];
+  private static cacheTimestamp = 0;
+  private static CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  /**
+   * Check if cache is valid and return cached events
+   */
+  private static getCachedEvents(): Event[] | null {
+    const now = Date.now();
+    if (this.eventsCache.length > 0 && (now - this.cacheTimestamp) < this.CACHE_DURATION) {
+      return this.eventsCache;
+    }
+    return null;
+  }
+
+  /**
+   * Fetch all events from the backend
+   */
+  private static async fetchAllEvents(): Promise<Event[]> {
+    try {
+      // Try to use cached events first
+      const cached = this.getCachedEvents();
+      if (cached) {
+        return cached;
+      }
+
+      // Fetch from backend
+      const response = await apiAdapter.get<Event[]>('/api/events');
+      const events = response.data || [];
+
+      // Update cache
+      this.eventsCache = events;
+      this.cacheTimestamp = Date.now();
+
+      return events;
+    } catch (error) {
+      console.warn('Failed to fetch events from backend, falling back to mock data:', error);
+      // Fallback to mock data if API fails
+      return mockEvents;
+    }
+  }
+
+  /**
+   * Clear the events cache (useful after creating/updating events)
+   */
+  public static clearCache(): void {
+    this.eventsCache = [];
+    this.cacheTimestamp = 0;
+  }
   /**
    * Get recent events for sidebar display
    * @param limit Number of events to return (default: 6)
    * @returns Array of EventSummary objects for sidebar
    */
-  static getRecentEvents(limit: number = 6): EventSummary[] {
+  static async getRecentEvents(limit: number = 6): Promise<EventSummary[]> {
+    const events = await this.fetchAllEvents();
     // Sort by date descending (most recent first)
-    const sortedEvents = [...mockEvents].sort((a, b) => b.date.getTime() - a.date.getTime());
+    const sortedEvents = [...events].sort((a, b) => b.date.getTime() - a.date.getTime());
     
     return sortedEvents
       .slice(0, limit)
@@ -27,9 +78,15 @@ export class EventsService {
    * Get all past events for the full past events page
    * @returns Array of all Event objects
    */
-  static getAllPastEvents(): Event[] {
-    // Sort by date descending (most recent first)
-    return [...mockEvents].sort((a, b) => b.date.getTime() - a.date.getTime());
+  static async getAllPastEvents(): Promise<Event[]> {
+    try {
+      const response = await apiAdapter.get<Event[]>('/api/events/past');
+      return response.data || [];
+    } catch (error) {
+      console.warn('Failed to fetch past events, falling back to cached/mock data:', error);
+      const events = await this.fetchAllEvents();
+      return events.sort((a, b) => b.date.getTime() - a.date.getTime());
+    }
   }
 
   /**
@@ -37,8 +94,15 @@ export class EventsService {
    * @param id Event ID
    * @returns Event object or undefined if not found
    */
-  static getEventById(id: string): Event | undefined {
-    return mockEvents.find(event => event.id === id);
+  static async getEventById(id: string): Promise<Event | undefined> {
+    try {
+      const response = await apiAdapter.get<Event>(`/api/events/${id}`);
+      return response.data;
+    } catch (error) {
+      console.warn(`Failed to fetch event ${id}, falling back to cached data:`, error);
+      const events = await this.fetchAllEvents();
+      return events.find(event => event.id === id);
+    }
   }
 
   /**
@@ -46,8 +110,9 @@ export class EventsService {
    * @param status Event status to filter by
    * @returns Array of events with the specified status
    */
-  static getEventsByStatus(status: Event['status']): Event[] {
-    return mockEvents
+  static async getEventsByStatus(status: Event['status']): Promise<Event[]> {
+    const events = await this.fetchAllEvents();
+    return events
       .filter(event => event.status === status)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }
@@ -57,23 +122,29 @@ export class EventsService {
    * @param limit Number of events to return (default: unlimited)
    * @returns Array of upcoming events
    */
-  static getUpcomingEvents(limit?: number): Event[] {
-    const now = new Date();
-    const upcomingEvents = mockEvents
-      .filter(event => event.status === 'scheduled' && event.date > now)
-      .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort ascending for upcoming
-    
-    return limit ? upcomingEvents.slice(0, limit) : upcomingEvents;
+  static async getUpcomingEvents(limit?: number): Promise<Event[]> {
+    try {
+      const response = await apiAdapter.get<Event[]>('/api/events/upcoming');
+      const events = response.data || [];
+      return limit ? events.slice(0, limit) : events;
+    } catch (error) {
+      console.warn('Failed to fetch upcoming events, falling back to cached/mock data:', error);
+      const events = await this.fetchAllEvents();
+      const now = new Date();
+      const upcomingEvents = events
+        .filter(event => event.status === 'scheduled' && event.date > now)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      
+      return limit ? upcomingEvents.slice(0, limit) : upcomingEvents;
+    }
   }
 
   /**
    * Get all scheduled events (both past and future scheduled events)
    * @returns Array of all scheduled events
    */
-  static getScheduledEvents(): Event[] {
-    return mockEvents
-      .filter(event => event.status === 'scheduled')
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  static async getScheduledEvents(): Promise<Event[]> {
+    return this.getEventsByStatus('scheduled');
   }
 
   /**
@@ -81,14 +152,12 @@ export class EventsService {
    * @param weekStartDate Start date of the week
    * @returns Array of events within that week
    */
-  static getEventsForWeek(weekStartDate: Date): Event[] {
+  static async getEventsForWeek(weekStartDate: Date): Promise<Event[]> {
     const weekEnd = new Date(weekStartDate);
     weekEnd.setDate(weekEnd.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
     
-    return mockEvents
-      .filter(event => event.date >= weekStartDate && event.date <= weekEnd)
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    return this.getEventsByDateRange(weekStartDate, weekEnd);
   }
 
   /**
@@ -96,16 +165,14 @@ export class EventsService {
    * @param targetDate The date to get events for
    * @returns Array of events on that day
    */
-  static getEventsForDay(targetDate: Date): Event[] {
+  static async getEventsForDay(targetDate: Date): Promise<Event[]> {
     const dayStart = new Date(targetDate);
     dayStart.setHours(0, 0, 0, 0);
     
     const dayEnd = new Date(targetDate);
     dayEnd.setHours(23, 59, 59, 999);
     
-    return mockEvents
-      .filter(event => event.date >= dayStart && event.date <= dayEnd)
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    return this.getEventsByDateRange(dayStart, dayEnd);
   }
 
   /**
@@ -114,8 +181,9 @@ export class EventsService {
    * @param endDate End date
    * @returns Array of events within the date range
    */
-  static getEventsByDateRange(startDate: Date, endDate: Date): Event[] {
-    return mockEvents
+  static async getEventsByDateRange(startDate: Date, endDate: Date): Promise<Event[]> {
+    const events = await this.fetchAllEvents();
+    return events
       .filter(event => event.date >= startDate && event.date <= endDate)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }
@@ -124,15 +192,16 @@ export class EventsService {
    * Get total count of events by status
    * @returns Object with counts for each status
    */
-  static getEventCounts() {
+  static async getEventCounts() {
+    const events = await this.fetchAllEvents();
     const counts = {
       completed: 0,
       cancelled: 0,
       scheduled: 0,
-      total: mockEvents.length
+      total: events.length
     };
 
-    mockEvents.forEach(event => {
+    events.forEach(event => {
       counts[event.status]++;
     });
 

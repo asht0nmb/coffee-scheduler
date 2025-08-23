@@ -5,8 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Event } from '@/types/events';
 import { eventsService } from '@/services/eventsService';
 import { EventDetails } from '@/components/events/event-details-modal';
+import { useScheduling } from '@/contexts/scheduling-context';
+import { PendingEvent } from '@/services/pendingEventsService';
+import { Button } from '@/components/ui/button';
 
-type ViewMode = 'past' | 'upcoming';
+type ViewMode = 'past' | 'upcoming' | 'pending';
 
 function EventsPageContent() {
   const searchParams = useSearchParams();
@@ -14,6 +17,14 @@ function EventsPageContent() {
   const [activeView, setActiveView] = useState<ViewMode>('past');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [processingEventId, setProcessingEventId] = useState<string | null>(null);
+  
+  const { 
+    pendingEvents, 
+    loadPendingEvents, 
+    clearPendingEvent, 
+    error: pendingError 
+  } = useScheduling();
   
   // Check URL params to set initial view
   useEffect(() => {
@@ -22,15 +33,52 @@ function EventsPageContent() {
       setActiveView('upcoming');
     } else if (viewParam === 'past') {
       setActiveView('past');
+    } else if (viewParam === 'pending') {
+      setActiveView('pending');
     }
     setIsMounted(true);
   }, [searchParams]);
   
-  // Get events based on active view
-  const pastEvents: Event[] = eventsService.getAllPastEvents();
-  const upcomingEvents: Event[] = eventsService.getUpcomingEvents();
+  // Load pending events when pending view is selected
+  useEffect(() => {
+    if (activeView === 'pending') {
+      loadPendingEvents().catch(err => {
+        console.error('Failed to load pending events:', err);
+      });
+    }
+  }, [activeView, loadPendingEvents]);
   
-  const currentEvents = activeView === 'past' ? pastEvents : upcomingEvents;
+  // State for events data
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  
+  // Load events based on active view
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (activeView === 'pending') return; // Pending events handled separately
+      
+      setIsLoadingEvents(true);
+      try {
+        if (activeView === 'past') {
+          const events = await eventsService.getAllPastEvents();
+          setPastEvents(events);
+        } else if (activeView === 'upcoming') {
+          const events = await eventsService.getUpcomingEvents();
+          setUpcomingEvents(events);
+        }
+      } catch (error) {
+        console.error('Failed to load events:', error);
+        // TODO: Show error toast or notification
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    loadEvents();
+  }, [activeView]);
+  
+  const currentEvents = activeView === 'past' ? pastEvents : activeView === 'upcoming' ? upcomingEvents : [];
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -73,13 +121,15 @@ function EventsPageContent() {
   };
   
   const getViewTitle = () => {
-    return activeView === 'past' ? 'Past Events' : 'Upcoming Events';
+    return activeView === 'past' ? 'Past Events' : activeView === 'upcoming' ? 'Upcoming Events' : 'Pending Events';
   };
   
   const getViewDescription = () => {
     return activeView === 'past' 
       ? 'View your completed and cancelled scheduling sessions'
-      : 'View your scheduled upcoming meetings and events';
+      : activeView === 'upcoming'
+      ? 'View your scheduled upcoming meetings and events'
+      : 'These are confirmed time slots that are currently blocking your calendar for new scheduling.';
   };
   
   const handleViewDetails = (event: Event) => {
@@ -88,6 +138,42 @@ function EventsPageContent() {
   
   const handleCloseDetails = () => {
     setSelectedEvent(null);
+  };
+
+  // Pending events handlers
+  const handleClearPendingEvent = async (eventId: string, contactName: string) => {
+    const confirmed = confirm(`Cancel the pending meeting with ${contactName}? This will free up the time slot for future scheduling.`);
+    
+    if (!confirmed) return;
+    
+    setProcessingEventId(eventId);
+    
+    try {
+      await clearPendingEvent(eventId);
+    } catch (err) {
+      console.error('Failed to clear pending event:', err);
+      alert('Failed to cancel the pending event. Please try again.');
+    } finally {
+      setProcessingEventId(null);
+    }
+  };
+
+  const formatTimeSlot = (event: PendingEvent) => {
+    const createdDate = new Date(event.createdAt).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+    
+    return `${event.timeSlot} (confirmed ${createdDate})`;
+  };
+
+  const getStatusColor = (status: PendingEvent['status']) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'scheduled': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -135,6 +221,16 @@ function EventsPageContent() {
           >
             Upcoming Events
           </button>
+          <button
+            onClick={() => router.push('/dashboard/events?view=pending')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer ${
+              activeView === 'pending'
+                ? 'bg-white text-neutral-900 shadow-sm'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+          >
+            Pending Events
+          </button>
         </div>
         
         {/* Info Hover Button - positioned to align with status tags */}
@@ -154,9 +250,119 @@ function EventsPageContent() {
         </div>
       </div>
 
+      {/* Error State for Pending Events */}
+      {activeView === 'pending' && pendingError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <div className="text-red-500 mr-3">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
+              </svg>
+            </div>
+            <p className="text-red-700">{pendingError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Events List */}
+      {activeView === 'pending' && (
+        <div className="space-y-4">
+          {pendingEvents.map((event) => (
+            <div 
+              key={event.id}
+              className="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-display font-semibold text-neutral-900">
+                      Meeting with {event.contactName}
+                    </h3>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                      {event.status}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-1 text-sm text-neutral-600">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{formatTimeSlot(event)}</span>
+                    </div>
+                    
+                    {event.contactEmail && (
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        </svg>
+                        <span>{event.contactEmail}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{event.duration} minutes • {event.timezone}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 ml-4">
+                  {event.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          alert('Add to Calendar feature coming soon!');
+                        }}
+                      >
+                        📅 Add to Calendar
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleClearPendingEvent(event.id, event.contactName)}
+                        disabled={processingEventId === event.id}
+                      >
+                        {processingEventId === event.id ? 'Cancelling...' : '❌ Cancel'}
+                      </Button>
+                    </>
+                  )}
+                  
+                  {event.status === 'scheduled' && (
+                    <span className="text-sm text-green-600 font-medium">
+                      ✓ Added to Calendar
+                    </span>
+                  )}
+                  
+                  {event.status === 'cancelled' && (
+                    <span className="text-sm text-red-600 font-medium">
+                      ❌ Cancelled
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoadingEvents && activeView !== 'pending' && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <span className="ml-3 text-neutral-600">Loading events...</span>
+        </div>
+      )}
+
       {/* Events List */}
-      <div className="space-y-4">
-        {currentEvents.map((event) => (
+      {!isLoadingEvents && activeView !== 'pending' && (
+        <div className="space-y-4">
+          {currentEvents.map((event) => (
           <div 
             key={event.id}
             className="bg-white border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -235,10 +441,28 @@ function EventsPageContent() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Empty State (when no events) */}
-      {currentEvents.length === 0 && (
+      {activeView === 'pending' && pendingEvents.length === 0 && !pendingError && (
+        <div className="text-center py-12">
+          <div className="text-neutral-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-neutral-900 mb-2">No Pending Events</h3>
+          <p className="text-neutral-600 mb-4">
+            You don&apos;t have any confirmed time slots waiting to be scheduled.
+          </p>
+          <Button onClick={() => router.push('/dashboard')}>
+            Schedule New Meeting
+          </Button>
+        </div>
+      )}
+
+      {!isLoadingEvents && activeView !== 'pending' && currentEvents.length === 0 && (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">
             {activeView === 'upcoming' ? '🗓️' : '📅'}
@@ -258,6 +482,18 @@ function EventsPageContent() {
           >
             ← Back to Dashboard
           </button>
+        </div>
+      )}
+
+      {/* Statistics for Pending Events */}
+      {activeView === 'pending' && pendingEvents.length > 0 && (
+        <div className="mt-8 p-4 bg-neutral-50 rounded-lg">
+          <h4 className="font-medium text-neutral-900 mb-2">Summary</h4>
+          <div className="text-sm text-neutral-600 space-y-1">
+            <div>Total pending events: {pendingEvents.filter(e => e.status === 'pending').length}</div>
+            <div>Scheduled events: {pendingEvents.filter(e => e.status === 'scheduled').length}</div>
+            <div>Cancelled events: {pendingEvents.filter(e => e.status === 'cancelled').length}</div>
+          </div>
         </div>
       )}
 

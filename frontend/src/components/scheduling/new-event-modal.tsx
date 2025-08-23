@@ -1,6 +1,7 @@
 'use client';
 
 import { useModal } from '@/contexts/modal-context';
+import { useScheduling } from '@/contexts/scheduling-context';
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,13 @@ import { useModalEscape } from '@/hooks/useModalEscape';
 
 export const NewEventModal = () => {
   const { isNewEventModalOpen, closeNewEventModal } = useModal();
+  const { createSession, isLoading, error, clearError } = useScheduling();
   const [contacts, setContacts] = useState<NewContact[]>([
     { id: '1', name: '', timezone: DEFAULT_TIMEZONE, email: '' }
   ]);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [showNotification, setShowNotification] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -67,8 +70,11 @@ export const NewEventModal = () => {
     ));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear any previous errors
+    clearError();
     
     // Validate form - only check contacts now
     const validContacts = contacts.filter(c => c.name.trim());
@@ -77,18 +83,27 @@ export const NewEventModal = () => {
       return;
     }
 
-    // Create scheduling session
-    const sessionId = Date.now().toString();
+    setIsSubmitting(true);
     
-    // TODO: Save session data to state/storage
-
-    // Close modal and navigate to scheduling view
-    closeNewEventModal();
-    router.push(`/dashboard/scheduling/${sessionId}`);
-    
-    // Reset form
-    setContacts([{ id: '1', name: '', timezone: DEFAULT_TIMEZONE, email: '' }]);
-    setDuration(DEFAULT_DURATION);
+    try {
+      // Create real scheduling session with backend
+      const sessionId = await createSession(validContacts, duration);
+      
+      // Close modal and navigate to scheduling view
+      closeNewEventModal();
+      router.push(`/dashboard/scheduling/${sessionId}`);
+      
+      // Reset form
+      setContacts([{ id: '1', name: '', timezone: DEFAULT_TIMEZONE, email: '' }]);
+      setDuration(DEFAULT_DURATION);
+      
+    } catch (err) {
+      console.error('Failed to create scheduling session:', err);
+      // Show error notification
+      setShowNotification(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isNewEventModalOpen) return null;
@@ -260,11 +275,21 @@ export const NewEventModal = () => {
 
           {/* Actions */}
           <div className="flex space-x-3 pt-4">
-            <Button type="button" variant="outline" onClick={closeNewEventModal} className="flex-1">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={closeNewEventModal} 
+              className="flex-1"
+              disabled={isSubmitting || isLoading}
+            >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1">
-              Create Schedule
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={isSubmitting || isLoading}
+            >
+              {isSubmitting || isLoading ? 'Creating...' : 'Create Schedule'}
             </Button>
           </div>
         </form>
@@ -272,11 +297,14 @@ export const NewEventModal = () => {
 
       {/* Simple Popup */}
       <SimplePopup
-        show={showNotification}
-        onHide={() => setShowNotification(false)}
-        title="Missing contacts"
-        message={APP_CONSTANTS.ERROR_VALIDATION}
-        type="warning"
+        show={showNotification || !!error}
+        onHide={() => {
+          setShowNotification(false);
+          clearError();
+        }}
+        title={error ? "Scheduling Error" : "Missing contacts"}
+        message={error || APP_CONSTANTS.ERROR_VALIDATION}
+        type={error ? "error" : "warning"}
         duration={3000}
       />
     </div>

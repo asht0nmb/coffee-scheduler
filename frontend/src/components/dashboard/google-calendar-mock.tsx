@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventsService } from '@/services/eventsService';
+import { Event } from '@/types/events';
 
 export const GoogleCalendarMock = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [weekEvents, setWeekEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const formatTime = (date: Date) => {
@@ -25,15 +29,34 @@ export const GoogleCalendarMock = () => {
   };
 
 
-  const getUpcomingEvents = () => {
-    return eventsService.getUpcomingEvents(3);
+  // Helper function to get events for current week
+  const getEventsForCurrentWeek = () => {
+    return weekEvents;
   };
 
-  const getEventsForCurrentWeek = () => {
-    // Get events for current week (July 2025)
-    const weekStart = new Date(2025, 6, 14); // July 14, 2025
-    return eventsService.getEventsForWeek(weekStart);
-  };
+  // Load events on component mount
+  useEffect(() => {
+    const loadEvents = async () => {
+      setIsLoading(true);
+      try {
+        const [upcoming, week] = await Promise.all([
+          eventsService.getUpcomingEvents(3),
+          eventsService.getEventsForWeek(new Date(2025, 6, 14)) // July 14, 2025
+        ]);
+        setUpcomingEvents(upcoming);
+        setWeekEvents(week);
+      } catch (error) {
+        console.error('Failed to load events:', error);
+        // Fallback to empty arrays
+        setUpcomingEvents([]);
+        setWeekEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
 
   return (
     <div 
@@ -52,7 +75,14 @@ export const GoogleCalendarMock = () => {
             Upcoming Events
           </h3>
           <div className="space-y-3">
-            {getUpcomingEvents().map((event) => (
+            {isLoading ? (
+              <div className="animate-pulse space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 bg-neutral-200 rounded"></div>
+                ))}
+              </div>
+            ) : upcomingEvents.length > 0 ? (
+              upcomingEvents.map((event) => (
               <div 
                 key={event.id} 
                 className="bg-neutral-50 rounded-md p-3 border border-neutral-200 hover:bg-neutral-100 transition-colors"
@@ -75,7 +105,12 @@ export const GoogleCalendarMock = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            ) : (
+              <div className="text-center text-neutral-500 text-sm py-4">
+                No upcoming events
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useScheduling } from '@/contexts/scheduling-context';
 import { Button } from '@/components/ui/button';
+
+interface SchedulingSessionData {
+  sessionId: string;
+  participants?: Array<{
+    id: string;
+    name: string;
+    timezone: string;
+    email?: string;
+  }>;
+  duration: number;
+  selectedSlots?: Array<{
+    contactId: string;
+    selectedSlot: string;
+  }>;
+}
 
 interface FinalizedMeeting {
   id: string;
@@ -20,43 +37,76 @@ interface FinalizedMeeting {
   description?: string;
 }
 
-// Mock finalized meeting data
-const mockFinalizedMeeting: FinalizedMeeting = {
-  id: '12345',
-  title: 'Team Coffee Chat',
-  finalDateTime: new Date(2025, 6, 15, 14, 0), // July 15, 2025 at 2 PM
-  duration: 30,
-  participants: [
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john@company.com',
-      timezone: 'America/Los_Angeles (PT)',
-      confirmed: true
-    },
-    {
-      id: '2', 
-      name: 'Jane Doe',
-      email: 'jane@company.com',
-      timezone: 'America/New_York (ET)',
-      confirmed: true
-    },
-    {
-      id: '3',
-      name: 'Mike Jones',
-      email: 'mike@company.com', 
-      timezone: 'Europe/London (GMT)',
-      confirmed: false
-    }
-  ],
-  meetingLink: 'https://zoom.us/j/1234567890',
-  location: 'Conference Room A / Zoom',
-  description: 'Monthly team coffee chat to discuss ongoing projects and team updates.'
+// Transform scheduling session data to finalized meeting format
+const transformSessionToMeeting = (session: SchedulingSessionData, selectedSlots: Array<{ contactId: string; selectedSlot: string; }>): FinalizedMeeting => {
+  return {
+    id: session.sessionId,
+    title: 'Coffee Chat Meeting',
+    finalDateTime: new Date(), // This would be calculated from selected slot
+    duration: session.duration || 30,
+    participants: session.participants?.map((participant) => {
+      const selection = selectedSlots.find(s => s.contactId === participant.id);
+      return {
+        id: participant.id,
+        name: participant.name,
+        email: participant.email || '',
+        timezone: participant.timezone,
+        confirmed: !!selection // Confirmed if they have a selected slot
+      };
+    }) || [],
+    meetingLink: '', // To be generated
+    location: 'TBD',
+    description: 'Scheduled coffee chat meeting.'
+  };
 };
 
 export default function ResultsPage() {
-  const [meeting] = useState<FinalizedMeeting>(mockFinalizedMeeting);
+  const router = useRouter();
+  const params = useParams();
+  const sessionId = params.id as string;
+  
+  const { currentSession, loadSession, getSelectedSlots, isLoading, error } = useScheduling();
+  
+  const [meeting, setMeeting] = useState<FinalizedMeeting | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+
+  // Load session data and transform to meeting format
+  useEffect(() => {
+    const loadMeetingData = async () => {
+      setIsLoadingSession(true);
+      
+      try {
+        let sessionData = currentSession;
+        
+        // Load session if not already available
+        if (!sessionData || sessionData.sessionId !== sessionId) {
+          sessionData = await loadSession(sessionId);
+        }
+        
+        if (sessionData) {
+          // Get the confirmed selections
+          const selectedSlots = sessionData.selectedSlots || getSelectedSlots();
+          
+          // Transform session data to meeting format
+          const meetingData = transformSessionToMeeting(sessionData, selectedSlots);
+          setMeeting(meetingData);
+        } else {
+          console.error('Session not found for results page');
+          router.push('/dashboard');
+        }
+      } catch (err) {
+        console.error('Failed to load meeting data:', err);
+        router.push('/dashboard');
+      } finally {
+        setIsLoadingSession(false);
+      }
+    };
+
+    if (sessionId) {
+      loadMeetingData();
+    }
+  }, [sessionId, currentSession, loadSession, getSelectedSlots, router]);
 
   const formatDateTime = (date: Date) => {
     return date.toLocaleDateString('en-US', {
@@ -72,7 +122,7 @@ export default function ResultsPage() {
   };
 
   const getConfirmedCount = () => {
-    return meeting.participants.filter(p => p.confirmed).length;
+    return meeting?.participants.filter(p => p.confirmed).length || 0;
   };
 
   const handleExportCalendar = () => {
@@ -90,8 +140,46 @@ export default function ResultsPage() {
 
   const handleReschedule = () => {
     // Navigate back to scheduling
-    window.history.back();
+    router.push(`/dashboard/scheduling/${sessionId}`);
   };
+
+  // Show loading state
+  if (isLoadingSession || isLoading) {
+    return (
+      <div className="px-4 py-6 sm:px-0 max-w-4xl">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-neutral-600">Loading meeting results...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || !meeting) {
+    return (
+      <div className="px-4 py-6 sm:px-0 max-w-4xl">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.732 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-neutral-900 mb-2">Meeting Not Found</h2>
+            <p className="text-neutral-600 mb-4">
+              {error || 'The meeting results could not be loaded.'}
+            </p>
+            <Button onClick={() => router.push('/dashboard')}>
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0 max-w-4xl">
@@ -99,7 +187,11 @@ export default function ResultsPage() {
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-2">
           <button 
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.history.back();
+              }
+            }}
             className="text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,7 +347,11 @@ export default function ResultsPage() {
 
               <Button 
                 variant="outline"
-                onClick={() => window.print()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.print();
+                  }
+                }}
                 className="w-full justify-start"
               >
                 🖨️ Print Details
