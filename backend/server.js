@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -27,6 +28,13 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URL,
+    dbName: 'coffee-scheduler-sessions',
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 24 hours
+    touchAfter: 24 * 3600 // Lazy session update
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
@@ -41,6 +49,16 @@ app.use(session({
 // ===============================
 // MIDDLEWARE
 // ===============================
+
+// Handle session store connection errors
+app.use((req, res, next) => {
+  if (!req.session) {
+    console.error('Session store unavailable');
+    return res.status(503).json({ error: 'Session store unavailable' });
+  }
+  next();
+});
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(generalRateLimit);

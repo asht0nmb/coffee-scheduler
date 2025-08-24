@@ -1,0 +1,42 @@
+
+> backend@1.0.0 start
+> node server.js
+
+MongoDB connection error: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017
+    at _handleConnectionErrors (/Users/ashtonmeyer-bibbins/Desktop/projects/coffee-scheduler/backend/node_modules/mongoose/lib/connection.js:1165:11)
+    at NativeConnection.openUri (/Users/ashtonmeyer-bibbins/Desktop/projects/coffee-scheduler/backend/node_modules/mongoose/lib/connection.js:1096:11)
+    at async connectDB (/Users/ashtonmeyer-bibbins/Desktop/projects/coffee-scheduler/backend/config/database.js:7:7)
+    at async startServer (/Users/ashtonmeyer-bibbins/Desktop/projects/coffee-scheduler/backend/server.js:267:5) {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: 'Unknown',
+    servers: Map(1) { 'localhost:27017' => [ServerDescription] },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: null,
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  cause: TopologyDescription {
+    type: 'Unknown',
+    servers: Map(1) { 'localhost:27017' => [ServerDescription] },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: null,
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  }
+}
+🚀 Coffee Scheduler API running on port 5001
+📊 Environment: development
+🔗 Health check: http://localhost:5001/api/health
+🔍 Routes: http://localhost:5001/api/debug/routes
