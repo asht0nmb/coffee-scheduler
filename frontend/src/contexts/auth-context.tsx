@@ -41,10 +41,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
 
   // Check authentication status with backend
   const checkAuthStatus = useCallback(async () => {
+    // Throttle requests - don't check more than once every 2 seconds
+    const now = Date.now();
+    if (now - lastCheckTime < 2000) {
+      console.log('⏳ Auth check throttled - too soon since last check');
+      return;
+    }
+    setLastCheckTime(now);
+
     try {
+      console.log('🔍 Checking auth status...');
       setIsLoading(true);
       setError(null);
 
@@ -58,14 +68,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Auth status response:', { 
+          authenticated: data.authenticated, 
+          hasUser: !!data.user,
+          userEmail: data.user?.email 
+        });
         
         if (data.authenticated && data.user) {
           setUser(data.user);
+          console.log('🎉 User authenticated:', data.user.email);
         } else {
           setUser(null);
+          console.log('❌ User not authenticated');
         }
       } else if (response.status === 401) {
         // Not authenticated - this is expected for logged out users
+        console.log('❌ 401 - Not authenticated');
         setUser(null);
       } else {
         throw new Error(`Auth check failed: ${response.status}`);
@@ -77,7 +95,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastCheckTime]);
 
   // Login - redirect to backend OAuth
   const login = () => {
@@ -126,9 +144,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     checkAuthStatus();
 
-    // Check auth status when user returns to the tab
+    // Check auth status when user returns to the tab (only if not loading)
     const handleVisibilityChange = () => {
-      if (typeof document !== 'undefined' && !document.hidden && user === null) {
+      if (typeof document !== 'undefined' && !document.hidden) {
         checkAuthStatus();
       }
     };
@@ -147,7 +165,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         window.removeEventListener('online', handleOnline);
       };
     }
-  }, [checkAuthStatus, user]);
+  }, [checkAuthStatus]); // Remove 'user' dependency to prevent loop
 
   // Periodic auth check (every 5 minutes) to handle session expiry
   useEffect(() => {
@@ -158,7 +176,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, [user, checkAuthStatus]);
+  }, [user, checkAuthStatus]); // Simplified dependencies - throttling handles conflicts
 
   const value: AuthContextType = {
     user,
