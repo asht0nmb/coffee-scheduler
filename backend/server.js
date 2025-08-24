@@ -14,6 +14,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const contactsRoutes = require('./routes/contacts');
 const calendarRoutes = require('./routes/calendar');
+const schedulingRoutes = require('./routes/scheduling');
 
 // Import middleware
 const { ensureAuthenticated } = require('./middleware/auth');
@@ -31,33 +32,39 @@ console.log('- MONGO_URL exists:', !!process.env.MONGO_URL);
 console.log('- MONGO_PUBLIC_URL exists:', !!process.env.MONGO_PUBLIC_URL);
 console.log('- MONGOHOST exists:', !!process.env.MONGOHOST);
 
-// Create session store with debugging
-const sessionStore = MongoStore.create({
-  mongoUrl: process.env.MONGO_URL,
-  dbName: 'coffee-scheduler-sessions',
-  collectionName: 'sessions',
-  ttl: 24 * 60 * 60, // 24 hours
-  touchAfter: 24 * 3600 // Lazy session update
-});
+// Create session store with debugging (fallback to MemoryStore if no MONGO_URL)
+let sessionStore = null;
 
-// Add session store event listeners for debugging
-sessionStore.on('connected', () => {
-  console.log('✅ Session store connected to MongoDB');
-});
+if (process.env.MONGO_URL) {
+  sessionStore = MongoStore.create({
+    mongoUrl: process.env.MONGO_URL,
+    dbName: 'coffee-scheduler-sessions',
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 24 hours
+    touchAfter: 24 * 3600 // Lazy session update
+  });
 
-sessionStore.on('error', (error) => {
-  console.error('❌ Session store connection error:', error);
-});
+  // Add session store event listeners for debugging
+  sessionStore.on('connected', () => {
+    console.log('✅ Session store connected to MongoDB');
+  });
 
-sessionStore.on('disconnected', () => {
-  console.log('⚠️ Session store disconnected from MongoDB');
-});
+  sessionStore.on('error', (error) => {
+    console.error('❌ Session store connection error:', error);
+  });
+
+  sessionStore.on('disconnected', () => {
+    console.log('⚠️ Session store disconnected from MongoDB');
+  });
+} else {
+  console.log('⚠️ No MONGO_URL provided - using MemoryStore for sessions (not production ready)');
+}
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
-  store: sessionStore,
+  store: sessionStore || undefined, // Use MemoryStore if no MongoDB
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
@@ -254,6 +261,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/calendar', ensureAuthenticated, calendarRoutes);
+app.use('/api/scheduling', ensureAuthenticated, schedulingRoutes);
 
 // Debug route for listing all registered routes
 app.get('/api/debug/routes', (_req, res) => {
@@ -295,7 +303,15 @@ app.get('/api/debug/routes', (_req, res) => {
     { path: '/api/calendar/suggestions', methods: ['GET'], description: 'Get current scheduling suggestions' },
     { path: '/api/calendar/clear-suggestions', methods: ['POST'], description: 'Clear scheduling suggestions' },
     { path: '/api/calendar/sync-scheduled', methods: ['POST'], description: 'Sync scheduled meetings with calendar' },
-    { path: '/api/calendar/cleanup-expired', methods: ['POST'], description: 'Cleanup expired suggestions' }
+    { path: '/api/calendar/cleanup-expired', methods: ['POST'], description: 'Cleanup expired suggestions' },
+    
+    // Scheduling routes (require authentication) - Frontend Bridge
+    { path: '/api/scheduling', methods: ['POST'], description: 'Create scheduling session (bridges to calendar algorithm)' },
+    { path: '/api/scheduling/:sessionId', methods: ['GET'], description: 'Get scheduling session data' },
+    { path: '/api/scheduling/confirm', methods: ['POST'], description: 'Confirm time slot selections' },
+    { path: '/api/scheduling/suggestions', methods: ['GET'], description: 'Get pending events/suggestions' },
+    { path: '/api/scheduling/suggestions/:eventId', methods: ['DELETE'], description: 'Clear/cancel pending event' },
+    { path: '/api/scheduling/health', methods: ['GET'], description: 'Scheduling bridge health check' }
   ];
 
   res.json({
