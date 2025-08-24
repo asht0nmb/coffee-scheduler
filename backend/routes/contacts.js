@@ -21,10 +21,23 @@ router.get('/', ensureAuthenticated, async (req, res) => {
 
 // Add new contact
 router.post('/', ensureAuthenticated, contactRateLimit, validateContactData, async (req, res) => {
+  console.log('👥 Contact Creation Request:', {
+    body: req.body,
+    userId: req.session?.user?.id,
+    userEmail: req.session?.user?.email,
+    sessionId: req.sessionID,
+    timestamp: new Date().toISOString()
+  });
+  
   const { name, email, timezone, notes, meetingPreferences } = req.body;
 
   // Validation
   if (!name || !email || !timezone) {
+    console.log('❌ Contact validation failed - missing required fields:', {
+      hasName: !!name,
+      hasEmail: !!email,
+      hasTimezone: !!timezone
+    });
     return res.status(400).json({ 
       error: 'Name, email, and timezone are required' 
     });
@@ -33,39 +46,91 @@ router.post('/', ensureAuthenticated, contactRateLimit, validateContactData, asy
   // Email format validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
+    console.log('❌ Invalid email format:', email);
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
   try {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    console.log('🔍 Checking for existing contact:', {
+      userId: req.session.user.id,
+      email: normalizedEmail
+    });
+    
     // Check if contact already exists
     const existingContact = await Contact.findOne({
       userId: req.session.user.id,
-      email: email.toLowerCase()
+      email: normalizedEmail
     });
 
     if (existingContact) {
-      return res.status(409).json({ 
-        error: 'Contact with this email already exists' 
+      console.log('⚠️ Contact already exists:', {
+        existingContactId: existingContact._id,
+        existingName: existingContact.name,
+        existingStatus: existingContact.status,
+        createdAt: existingContact.createdAt
+      });
+      
+      // Return the existing contact instead of error for better UX
+      return res.status(200).json({
+        message: 'Contact already exists, returning existing contact',
+        contact: existingContact,
+        wasExisting: true
       });
     }
 
+    console.log('✨ Creating new contact:', {
+      name: name.trim(),
+      email: normalizedEmail,
+      timezone,
+      userId: req.session.user.id
+    });
+    
     const contact = new Contact({
       userId: req.session.user.id,
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       timezone,
       notes: notes || '',
-      meetingPreferences: meetingPreferences || {},
+      meetingPreferences: meetingPreferences || {
+        duration: 30,
+        timeOfDay: 'any'
+      },
       status: 'pending'
     });
 
     const savedContact = await contact.save();
-    console.log('Contact created:', savedContact.email);
+    console.log('✅ Contact created successfully:', {
+      id: savedContact._id,
+      name: savedContact.name,
+      email: savedContact.email,
+      status: savedContact.status
+    });
     
     res.status(201).json(savedContact);
   } catch (error) {
-    console.error('Create contact error:', error);
-    res.status(500).json({ error: 'Failed to create contact' });
+    console.error('❌ Create contact error:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+      requestBody: req.body,
+      userId: req.session?.user?.id
+    });
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        error: 'Contact with this email already exists',
+        details: 'Duplicate key error'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to create contact',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 

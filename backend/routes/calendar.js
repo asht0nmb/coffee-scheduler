@@ -236,29 +236,89 @@ router.get('/test', async (req, res) => {
 
 // Get calendar events for a date range
 router.get('/events', async (req, res) => {
+  console.log('📅 Calendar Events Request:', {
+    path: req.path,
+    query: req.query,
+    hasAuth: !!req.oauth2Client,
+    sessionId: req.sessionID,
+    userEmail: req.session?.user?.email
+  });
+  
   try {
-    const { timeMin, timeMax, calendarId = 'primary' } = req.query;
+    const { timeMin, timeMax, calendarId = 'primary', filter } = req.query;
+    
+    // If no time parameters provided, default to a reasonable range
+    let startTime = timeMin;
+    let endTime = timeMax;
     
     if (!timeMin || !timeMax) {
-      return res.status(400).json({ 
-        error: 'timeMin and timeMax query parameters are required' 
+      console.log('⚠️ No time range provided, using defaults');
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+      
+      startTime = thirtyDaysAgo.toISOString();
+      endTime = thirtyDaysFromNow.toISOString();
+      
+      console.log('🕰️ Using default time range:', {
+        startTime,
+        endTime
       });
     }
 
     const calendar = google.calendar({ version: 'v3', auth: req.oauth2Client });
     
+    console.log('📞 Calling Google Calendar API with:', {
+      calendarId,
+      timeMin: startTime,
+      timeMax: endTime
+    });
+    
     const response = await calendar.events.list({
       calendarId,
-      timeMin,
-      timeMax,
+      timeMin: startTime,
+      timeMax: endTime,
       singleEvents: true,
       orderBy: 'startTime',
       maxResults: 100
     });
     
+    console.log('✅ Calendar API response received:', {
+      eventCount: response.data.items?.length || 0,
+      hasItems: !!response.data.items
+    });
+    
+    // Transform events based on filter
+    let events = response.data.items || [];
+    
+    if (filter) {
+      const now = new Date();
+      if (filter === 'upcoming') {
+        events = events.filter(event => {
+          const eventStart = new Date(event.start?.dateTime || event.start?.date);
+          return eventStart > now;
+        });
+      } else if (filter === 'past') {
+        events = events.filter(event => {
+          const eventStart = new Date(event.start?.dateTime || event.start?.date);
+          return eventStart < now;
+        });
+      }
+    }
+    
+    console.log('📋 Returning filtered events:', {
+      filter,
+      totalEvents: response.data.items?.length || 0,
+      filteredEvents: events.length
+    });
+    
     res.json({
-      events: response.data.items,
-      nextSyncToken: response.data.nextSyncToken
+      events: events,
+      nextSyncToken: response.data.nextSyncToken,
+      timeRange: {
+        start: startTime,
+        end: endTime
+      }
     });
   } catch (error) {
     console.error('Get events error:', error);

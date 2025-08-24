@@ -152,12 +152,28 @@ export class ContactsService {
         });
       }
 
+      console.log('👥 Creating contact via API:', {
+        contactData,
+        timestamp: new Date().toISOString()
+      });
+      
       const response = await apiAdapter.post<Contact>('/api/contacts', contactData);
       
+      console.log('✅ Contact creation response:', {
+        success: response.success,
+        hasData: !!response.data,
+        contactId: response.data?._id,
+        wasExisting: (response.data as Record<string, unknown>)?.wasExisting
+      });
+      
       if (response.data) {
+        // Handle case where existing contact was returned
+        const responseData = response.data as Record<string, unknown>;
+        const contact = (responseData.contact as Contact) || response.data;
+        
         // Clear cache to ensure fresh data on next fetch
         this.clearCache();
-        return response.data;
+        return contact;
       }
 
       throw new AppError({
