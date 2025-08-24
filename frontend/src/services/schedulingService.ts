@@ -84,17 +84,17 @@ export class SchedulingService {
       // Step 2: Create contacts in database first to get MongoDB ObjectIds
       const createdContacts = await Promise.all(
         validContacts.map(async (contact) => {
+          const contactData = {
+            name: contact.name.trim(),
+            email: contact.email?.trim() || '',
+            timezone: contact.timezone,
+            meetingPreferences: {
+              duration: duration,
+              timeOfDay: 'any' // Default preference
+            }
+          };
+          
           try {
-            const contactData = {
-              name: contact.name.trim(),
-              email: contact.email?.trim() || '',
-              timezone: contact.timezone,
-              meetingPreferences: {
-                duration: duration,
-                timeOfDay: 'any' // Default preference
-              }
-            };
-            
             // Create contact in backend database
             return await contactsService.createContact(contactData);
           } catch (error) {

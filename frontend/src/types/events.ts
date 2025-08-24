@@ -9,6 +9,11 @@ export interface Event {
   type?: 'regular' | 'coffee_chat';
   createdAt?: Date;
   updatedAt?: Date;
+  // Contact details for event
+  contactEmail?: string;
+  contactTimezone?: string;
+  // Time slot suggestions (for modal display)
+  suggestedSlots?: string[];
 }
 
 export interface EventSummary {
