@@ -63,7 +63,7 @@ app.use(session({
     httpOnly: true,
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000,
-    domain: process.env.COOKIE_DOMAIN || undefined
+    domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Railway handles domain automatically
   },
   name: 'sessionId',
   proxy: process.env.NODE_ENV === 'production'
