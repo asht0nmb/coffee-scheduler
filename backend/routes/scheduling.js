@@ -72,41 +72,166 @@ router.post('/', async (req, res) => {
       });
     }
 
-    console.log('✅ Request validation passed - calling advanced scheduling algorithm');
+    console.log('✅ Request validation passed - preparing calendar data');
 
-    // Call the existing advanced scheduling algorithm
-    const schedulingResult = await optimizeCoffeeChats({
-      contactIds,
-      slotsPerContact,
-      dateRange,
-      consultantMode,
-      userId: req.session?.user?.id,
-      oauth2Client: req.oauth2Client // Pass the authenticated client
+    // We need to prepare the same data that the calendar route does
+    const { google } = require('googleapis');
+    const Contact = require('../models/Contact');
+    const User = require('../models/User');
+
+    // Validate and set date range
+    let start, end;
+    if (dateRange) {
+      start = new Date(dateRange.start);
+      end = new Date(dateRange.end);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Invalid date format in dateRange',
+          format: 'Use ISO 8601 format: 2024-03-15T00:00:00Z'
+        });
+      }
+      
+      if (start >= end) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Start date must be before end date'
+        });
+      }
+    } else {
+      start = new Date();
+      end = new Date();
+      end.setDate(end.getDate() + 14); // 14 days ahead
+    }
+
+    // Fetch contacts from database
+    const contacts = await Contact.find({ _id: { $in: contactIds } });
+    
+    if (contacts.length !== contactIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Some contact IDs were not found in database'
+      });
+    }
+
+    // Get user calendar data (similar to calendar route)
+    const calendar = google.calendar({ version: 'v3', auth: req.oauth2Client });
+    
+    const calendarResponse = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime'
     });
+
+    // Transform calendar events to busy times
+    const userCalendar = {
+      busySlots: (calendarResponse.data.items || [])
+        .filter(event => event.start && event.start.dateTime)
+        .map(event => ({
+          start: event.start.dateTime,
+          end: event.end.dateTime,
+          summary: event.summary
+        }))
+    };
+
+    // Prepare contacts for algorithm
+    const algorithContacts = contacts.map(contact => ({
+      id: contact._id.toString(),
+      name: contact.name,
+      email: contact.email,
+      timezone: contact.timezone,
+      workingHours: contact.workingHours || { start: 9, end: 17 }
+    }));
+
+    // Get user data for algorithm options
+    const user = await User.findOne({ googleId: req.session.user.id });
+    const algorithmOptions = {
+      slotsPerContact,
+      consultantMode,
+      userTimezone: req.session.user.timezone || 'America/Los_Angeles',
+      workingHours: user?.workingHours || { 
+        start: SCHEDULING_CONFIG.WORKING_HOURS_START, 
+        end: SCHEDULING_CONFIG.WORKING_HOURS_END 
+      }
+    };
+
+    console.log(`Running advanced algorithm for ${algorithContacts.length} contacts...`);
+
+    // Run the advanced scheduling algorithm (exact same call as calendar route)
+    const algorithmResult = optimizeCoffeeChats(
+      userCalendar,
+      algorithContacts,
+      { start: start.toISOString(), end: end.toISOString() },
+      algorithmOptions
+    );
+
+    if (!algorithmResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Scheduling algorithm failed',
+        details: algorithmResult.error
+      });
+    }
 
     console.log('✅ Advanced scheduling algorithm completed successfully');
 
-    // Transform the calendar response to match frontend expectations
+    // Transform the response format to match frontend expectations
+    const transformedResults = [];
+    
+    if (algorithmResult.results && Array.isArray(algorithmResult.results)) {
+      algorithmResult.results.forEach((result, index) => {
+        // Get the corresponding contact from our contacts array
+        const contact = contacts[index];
+        
+        transformedResults.push({
+          contact: {
+            id: contact._id.toString(),
+            name: contact.name,
+            timezone: contact.timezone || 'UTC',
+            email: contact.email || ''
+          },
+          suggestedSlots: (result.suggestedSlots || []).map(slot => ({
+            start: slot.start,
+            end: slot.end,
+            score: slot.score || slot.quality?.score || 75,
+            displayTimes: {
+              contact: slot.displayTimes?.contact || `${new Date(slot.start).toLocaleTimeString()} - ${new Date(slot.end).toLocaleTimeString()}`,
+              user: slot.displayTimes?.user || `${new Date(slot.start).toLocaleTimeString()} - ${new Date(slot.end).toLocaleTimeString()}`
+            },
+            quality: slot.quality || { score: slot.score || 75 }
+          }))
+        });
+      });
+    }
+
+    // Build response in exact format frontend expects
     const frontendResponse = {
       success: true,
       data: {
-        batchId: schedulingResult.batchId || Date.now().toString(),
-        algorithm: schedulingResult.algorithm || 'advanced',
-        results: schedulingResult.results || [],
-        statistics: schedulingResult.statistics || {
+        batchId: Date.now().toString(),
+        algorithm: algorithmResult.metadata?.algorithm || 'advanced',
+        results: transformedResults,
+        statistics: {
           totalContacts: contactIds.length,
-          totalSlots: 0,
-          avgQualityScore: 0
+          totalSlots: transformedResults.reduce((acc, result) => acc + result.suggestedSlots.length, 0),
+          avgQualityScore: algorithmResult.metadata?.averageQuality || 0
         },
-        metadata: {
+        metadata: algorithmResult.metadata || {
           processedAt: new Date().toISOString(),
-          userId: req.session?.user?.id,
+          algorithm: 'advanced',
           version: 'v2.0-bridge'
         }
       }
     };
 
-    console.log('📤 Sending transformed response to frontend');
+    console.log('📤 Sending transformed response to frontend:', {
+      resultCount: transformedResults.length,
+      totalSlots: frontendResponse.data.statistics.totalSlots
+    });
+    
     res.json(frontendResponse);
 
   } catch (error) {
