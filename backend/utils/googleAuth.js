@@ -40,24 +40,48 @@ const SCOPES = [
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:3000',
       'http://localhost:5173',
+      'https://localhost:3000', // HTTPS variants
+      'https://localhost:5173'
     ].filter(Boolean);
+    
+    console.log('🌐 CORS Origin Check:', {
+      requestOrigin: origin,
+      allowedOrigins,
+      isProduction: process.env.NODE_ENV === 'production'
+    });
     
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.error('❌ CORS blocked origin:', origin);
+      callback(new Error(`Origin ${origin} not allowed by CORS policy`));
     }
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['set-cookie']
+  credentials: true, // Essential for session cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization',
+    'Cookie',
+    'Set-Cookie',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  exposedHeaders: [
+    'set-cookie',
+    'Set-Cookie'
+  ],
+  // Handle preflight requests properly
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 };
 
 module.exports = {

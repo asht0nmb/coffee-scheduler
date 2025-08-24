@@ -29,8 +29,32 @@ async function upsertUser(googleProfile) {
 
 // Enhanced authentication middleware
 async function ensureAuthenticated(req, res, next) {
+  console.log('🔒 Authentication Check:', {
+    path: req.path,
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    hasTokens: !!req.session?.tokens,
+    hasUser: !!req.session?.user,
+    userEmail: req.session?.user?.email
+  });
+  
   if (!req.session.tokens || !req.session.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    console.log('❌ Authentication failed - missing session data:', {
+      hasTokens: !!req.session?.tokens,
+      hasUser: !!req.session?.user,
+      sessionKeys: req.session ? Object.keys(req.session) : []
+    });
+    
+    return res.status(401).json({ 
+      error: 'Not authenticated',
+      details: 'Session missing authentication tokens or user data',
+      debug: {
+        hasSession: !!req.session,
+        hasTokens: !!req.session?.tokens,
+        hasUser: !!req.session?.user,
+        sessionId: req.sessionID
+      }
+    });
   }
   
   // Check if access token is expired

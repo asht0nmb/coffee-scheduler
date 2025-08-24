@@ -72,7 +72,8 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
   process.exit(1);
 }
 
-app.use(session({
+// Production-optimized session configuration
+const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'development-session-secret-not-for-production',
   resave: false,
   saveUninitialized: false,
@@ -80,28 +81,57 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000,
-    domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Railway handles domain automatically
+    // Use 'lax' for better compatibility with deployment platforms
+    sameSite: 'lax', 
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    // Let deployment platform handle domain automatically
+    domain: undefined
   },
   name: 'sessionId',
-  proxy: process.env.NODE_ENV === 'production'
-}));
+  proxy: process.env.NODE_ENV === 'production',
+  // Force session save on modifications
+  rolling: true
+};
+
+// Log session configuration for debugging
+console.log('🔧 Session Configuration:', {
+  hasStore: !!sessionConfig.store,
+  secure: sessionConfig.cookie.secure,
+  sameSite: sessionConfig.cookie.sameSite,
+  maxAge: sessionConfig.cookie.maxAge,
+  proxy: sessionConfig.proxy
+});
+
+app.use(session(sessionConfig));
 
 // ===============================
 // MIDDLEWARE
 // ===============================
 
-// Session debugging middleware
+// Enhanced session debugging middleware
 app.use((req, res, next) => {
-  // Log session details for debugging
-  if (req.path.includes('/auth/')) {
+  // Log session details for auth and important API calls
+  if (req.path.includes('/auth/') || req.path.includes('/api/contacts') || req.path.includes('/api/scheduling')) {
     console.log(`🔍 Session Debug [${req.method} ${req.path}]:`, {
       sessionId: req.sessionID,
       hasSession: !!req.session,
       sessionKeys: req.session ? Object.keys(req.session) : 'no session',
-      cookies: req.headers.cookie ? 'cookies present' : 'no cookies'
+      cookies: req.headers.cookie ? 'cookies present' : 'no cookies',
+      cookieHeader: req.headers.cookie ? req.headers.cookie.substring(0, 100) + '...' : 'none',
+      userAgent: req.headers['user-agent'] ? req.headers['user-agent'].substring(0, 50) + '...' : 'none',
+      origin: req.headers.origin || 'no origin',
+      referer: req.headers.referer || 'no referer'
     });
+    
+    // Log authentication status
+    if (req.session && (req.session.user || req.session.tokens)) {
+      console.log(`✅ Session has auth data:`, {
+        hasUser: !!req.session.user,
+        hasTokens: !!req.session.tokens,
+        userEmail: req.session.user?.email,
+        sessionAge: req.session.cookie.maxAge
+      });
+    }
   }
   
   // Handle session store connection errors
@@ -140,31 +170,58 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Temporary session debugging endpoint
+// Enhanced session debugging endpoint
 app.get('/api/debug/session', (req, res) => {
   console.log('📊 Session Debug Endpoint Called');
   
-  // Create test session data
+  // Create test session data to verify session persistence
   if (!req.session.debugTest) {
     req.session.debugTest = {
       created: new Date().toISOString(),
-      random: Math.random().toString(36).substring(7)
+      testId: Math.random().toString(36).substring(7),
+      visits: 1
     };
+  } else {
+    req.session.debugTest.visits = (req.session.debugTest.visits || 1) + 1;
+    req.session.debugTest.lastVisit = new Date().toISOString();
   }
   
-  res.json({
-    message: 'Session debug information',
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    sessionKeys: req.session ? Object.keys(req.session) : [],
-    debugTest: req.session.debugTest,
-    cookies: req.headers.cookie ? 'present' : 'missing',
-    userAgent: req.headers['user-agent'],
-    // OAuth-specific debugging
-    hasTokens: !!req.session.tokens,
-    hasUser: !!req.session.user,
-    userEmail: req.session.user?.email,
-    isAuthenticated: !!(req.session.tokens && req.session.user)
+  // Force session save and return comprehensive debug info
+  req.session.save((err) => {
+    if (err) {
+      console.error('❌ Session save error:', err);
+    }
+    
+    const sessionInfo = {
+      message: 'Enhanced session debug information',
+      sessionId: req.sessionID,
+      hasSession: !!req.session,
+      sessionKeys: req.session ? Object.keys(req.session) : [],
+      isAuthenticated: !!(req.session?.user && req.session?.tokens),
+      hasUser: !!req.session?.user,
+      hasTokens: !!req.session?.tokens,
+      userEmail: req.session?.user?.email,
+      debugTest: req.session?.debugTest,
+      cookie: {
+        maxAge: req.session?.cookie?.maxAge,
+        secure: req.session?.cookie?.secure,
+        httpOnly: req.session?.cookie?.httpOnly,
+        sameSite: req.session?.cookie?.sameSite
+      },
+      headers: {
+        cookie: req.headers.cookie ? 'present' : 'missing',
+        origin: req.headers.origin,
+        userAgent: req.headers['user-agent']?.substring(0, 100)
+      },
+      store: {
+        type: sessionStore ? 'MongoDB' : 'Memory',
+        connected: !!sessionStore
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📊 Session Debug Info:', sessionInfo);
+    res.json(sessionInfo);
   });
 });
 

@@ -144,13 +144,28 @@ router.get('/google/callback', async (req, res) => {
     // Clean up state
     delete req.session.state;
     
-    // Ensure session is saved before redirect
-    req.session.save((saveErr) => {
-      if (saveErr) {
-        console.error('❌ Session save error after OAuth:', saveErr);
-      } else {
-        console.log('✅ Session saved successfully after OAuth');
-      }
+    // Force session save with retry mechanism
+    const saveSession = (attempt = 1) => {
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error(`❌ Session save error after OAuth (attempt ${attempt}):`, saveErr);
+          if (attempt < 3) {
+            console.log(`🔄 Retrying session save (attempt ${attempt + 1})...`);
+            setTimeout(() => saveSession(attempt + 1), 100);
+            return;
+          } else {
+            console.error('❌ Final session save failure after 3 attempts');
+          }
+        } else {
+          console.log('✅ Session saved successfully after OAuth');
+        }
+        
+        // Continue with response regardless of save status
+        handleOAuthSuccess();
+      });
+    };
+    
+    const handleOAuthSuccess = () => {
       
       // Log final session state
       console.log('🎯 Final OAuth Session State:', {
@@ -176,7 +191,10 @@ router.get('/google/callback', async (req, res) => {
           <p><a href="/api/calendar/test">Test Calendar</a></p>
         `);
       }
-    });
+    };
+    
+    // Start the session save process
+    saveSession();
   } catch (error) {
     console.error('OAuth callback error:', error);
     delete req.session.state;
