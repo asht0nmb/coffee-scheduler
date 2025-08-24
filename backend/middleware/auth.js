@@ -3,15 +3,6 @@ const User = require('../models/User');
 
 // Create or update user in MongoDB
 async function upsertUser(googleProfile) {
-  if (!process.env.MONGO_URL) {
-    return {
-      googleId: googleProfile.id,
-      email: googleProfile.email,
-      name: googleProfile.name,
-      picture: googleProfile.picture
-    };
-  }
-
   try {
     const user = await User.findOneAndUpdate(
       { googleId: googleProfile.id },

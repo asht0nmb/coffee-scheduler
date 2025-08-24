@@ -6,10 +6,6 @@ const { ensureAuthenticated } = require('../middleware/auth');
 // Get user profile
 router.get('/profile', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGO_URL) {
-      return res.json(req.session.user);
-    }
-    
     const user = await User.findOne({ googleId: req.session.user.id });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -26,13 +22,6 @@ router.get('/profile', ensureAuthenticated, async (req, res) => {
 router.put('/preferences', ensureAuthenticated, async (req, res) => {
   try {
     const { timezone, workingHours, preferences } = req.body;
-    
-    if (!process.env.MONGO_URL) {
-      return res.json({ 
-        message: 'Preferences updated (mock)',
-        timezone, workingHours, preferences 
-      });
-    }
     
     const updates = {};
     if (timezone) updates.timezone = timezone;

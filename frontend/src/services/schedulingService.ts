@@ -98,7 +98,37 @@ export class SchedulingService {
             // Create contact in backend database
             return await contactsService.createContact(contactData);
           } catch (error) {
-            console.warn(`Failed to create contact ${contact.name}:`, error);
+            console.error(`❌ Failed to create contact ${contact.name}:`, {
+              originalContact: contact,
+              transformedData: contactData,
+              error: error instanceof Error ? error.message : error,
+              stack: error instanceof Error ? error.stack : undefined,
+              errorType: error instanceof AppError ? 'AppError' : 'Unknown',
+              timestamp: new Date().toISOString()
+            });
+            
+            // Log more detailed debugging info for different error types
+            if (error instanceof AppError) {
+              console.error(`🔍 AppError details for ${contact.name}:`, {
+                code: error.code,
+                userMessage: error.userMessage,
+                retryable: error.retryable,
+                originalError: error.originalError?.message,
+                context: error.context
+              });
+            }
+            
+            // Log network/response info if available
+            if (error && typeof error === 'object' && 'response' in error) {
+              const networkError = error as { response?: { status?: number; statusText?: string; data?: unknown; headers?: unknown } };
+              console.error(`🌐 Network error details for ${contact.name}:`, {
+                status: networkError.response?.status,
+                statusText: networkError.response?.statusText,
+                data: networkError.response?.data,
+                headers: networkError.response?.headers
+              });
+            }
+            
             // Continue with other contacts even if one fails
             return null;
           }
@@ -109,10 +139,18 @@ export class SchedulingService {
       const successfulContacts = createdContacts.filter(contact => contact !== null);
       
       if (successfulContacts.length === 0) {
+        const failedCount = validContacts.length;
+        console.error('All contact creation attempts failed:', {
+          attempted: failedCount,
+          successful: 0,
+          originalContacts: contacts,
+          validContacts: validContacts
+        });
+        
         throw new AppError({
-          message: 'Failed to create any contacts',
+          message: `Failed to create any contacts (${failedCount} attempts failed)`,
           code: 'CONTACT_CREATION_ERROR',
-          userMessage: 'Unable to create contacts in the database. Please try again.',
+          userMessage: 'Unable to create contacts in the database. Check your network connection and try again.',
           retryable: true
         });
       }

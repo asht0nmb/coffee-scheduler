@@ -43,16 +43,27 @@ export class APIAdapter {
     '/api/events/past': '/api/calendar/events?filter=past',
     '/api/events/upcoming': '/api/calendar/events?filter=upcoming',
     
-    // Scheduling routes (map to calendar scheduling)
-    '/api/scheduling': '/api/calendar/schedule-batch-advanced',
-    '/api/scheduling/generate': '/api/calendar/schedule-batch-advanced', 
-    '/api/scheduling/suggestions': '/api/calendar/suggestions',
-    '/api/scheduling/clear': '/api/calendar/clear-suggestions',
+    // Scheduling routes (map to new scheduling bridge)
+    '/api/scheduling': '/api/scheduling',
+    '/api/scheduling/generate': '/api/scheduling', 
+    '/api/scheduling/suggestions': '/api/scheduling/suggestions',
+    '/api/scheduling/clear': '/api/scheduling/suggestions',
+    '/api/scheduling/confirm': '/api/scheduling/confirm',
+    '/api/scheduling/session': '/api/scheduling', // For session-based requests
+    
+    // Pending Events routes (direct mapping)
+    '/api/pending-events': '/api/pending-events',
+    '/api/pending-events/bulk': '/api/pending-events/bulk',
+    '/api/pending-events/bulk-clear': '/api/pending-events/bulk-clear',
+    '/api/pending-events/blocked-slots': '/api/pending-events/blocked-slots',
+    '/api/pending-events/cleanup': '/api/pending-events/cleanup',
+    '/api/pending-events/check-conflict': '/api/pending-events/check-conflict',
+    '/api/pending-events/stats': '/api/pending-events/stats',
     
     // Settings routes (map to user routes)
     '/api/settings': '/api/user/preferences',
     '/api/settings/profile': '/api/user/profile',
-    '/api/settings/export': '/api/user/export', // TODO: implement if needed
+    '/api/settings/export': '/api/user/export', // Optional export feature
     
     // Health check
     '/api/health': '/api/health'
@@ -234,17 +245,24 @@ export class APIAdapter {
    * Transform scheduling request data
    */
   private transformSchedulingRequest(data: Record<string, unknown>): Record<string, unknown> {
-    // Transform frontend scheduling request to backend calendar request
-    return {
-      contacts: (data.contactIds as string[])?.map((id: string) => ({ id })) || data.contacts || [],
+    // Transform frontend scheduling request to backend scheduling request
+    const transformed = {
+      contactIds: data.contactIds || (data.contacts as Array<Record<string, unknown>>)?.map(c => c.id) || [],
       duration: data.duration || 30,
       slotsPerContact: data.slotsPerContact || 3,
       dateRange: data.dateRange || {
         start: new Date().toISOString(),
         end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 2 weeks
       },
-      algorithmMode: data.consultantMode ? 'advanced' : 'basic'
+      consultantMode: data.consultantMode !== false // Default to true
     };
+    
+    // Ensure contactIds are strings (frontend sends strings, backend expects strings that get converted to ObjectId)
+    if (Array.isArray(transformed.contactIds)) {
+      transformed.contactIds = transformed.contactIds.map(id => String(id));
+    }
+    
+    return transformed;
   }
 
   /**
@@ -323,9 +341,9 @@ export class APIAdapter {
       name: data.name,
       email: data.email,
       timezone: data.timezone,
-      preferences: data.meetingPreferences || {
-        duration: 30,
-        timeOfDay: data.timeOfDay
+      meetingPreferences: data.meetingPreferences || {
+        duration: 60,
+        timeOfDay: data.timeOfDay || 'any'
       }
     };
   }

@@ -29,8 +29,8 @@ export const EventDetails = ({ event, onClose }: EventDetailsProps) => {
 
   // Extract contact info (using first participant as primary contact)
   const contactName = event.participants[0] || 'Unknown Contact';
-  const contactEmail = `${contactName.toLowerCase().replace(' ', '.')}@example.com`; // Mock email
-  const contactTimezone = 'America/New_York (ET)'; // Mock timezone
+  const contactEmail = event.contactEmail || 'No email provided'; // Use real contact email
+  const contactTimezone = event.contactTimezone || 'UTC'; // Use real contact timezone
 
   // Mock the three time slots that were sent (including the final one)
   const sentTimeSlots = [

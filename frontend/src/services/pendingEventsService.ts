@@ -245,30 +245,6 @@ export class PendingEventsService {
     }
   }
 
-  /**
-   * Emergency fallback: Generate mock pending events data
-   * Used when backend is unavailable
-   */
-  static generateMockPendingEvents(): PendingEvent[] {
-    return [
-      {
-        id: 'mock-1',
-        sessionId: 'mock-session-1',
-        contactName: 'John Smith',
-        contactEmail: 'john@example.com',
-        timeSlot: 'Mon 9-10am',
-        rawTimeSlot: {
-          start: new Date().toISOString(),
-          end: new Date(Date.now() + 60 * 60 * 1000).toISOString()
-        },
-        timezone: 'America/New_York',
-        duration: 60,
-        createdAt: new Date().toISOString(),
-        status: 'pending',
-        userId: 'current-user'
-      }
-    ];
-  }
 }
 
 // Export instance for easier importing

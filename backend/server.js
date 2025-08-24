@@ -15,6 +15,7 @@ const userRoutes = require('./routes/user');
 const contactsRoutes = require('./routes/contacts');
 const calendarRoutes = require('./routes/calendar');
 const schedulingRoutes = require('./routes/scheduling');
+const pendingEventsRoutes = require('./routes/pending-events');
 
 // Import middleware
 const { ensureAuthenticated } = require('./middleware/auth');
@@ -32,7 +33,7 @@ console.log('- MONGO_URL exists:', !!process.env.MONGO_URL);
 console.log('- MONGO_PUBLIC_URL exists:', !!process.env.MONGO_PUBLIC_URL);
 console.log('- MONGOHOST exists:', !!process.env.MONGOHOST);
 
-// Create session store with debugging (fallback to MemoryStore if no MONGO_URL)
+// Create session store with production-ready configuration
 let sessionStore = null;
 
 if (process.env.MONGO_URL) {
@@ -57,11 +58,22 @@ if (process.env.MONGO_URL) {
     console.log('⚠️ Session store disconnected from MongoDB');
   });
 } else {
-  console.log('⚠️ No MONGO_URL provided - using MemoryStore for sessions (not production ready)');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ FATAL: MONGO_URL is required in production');
+    process.exit(1);
+  } else {
+    console.log('⚠️ No MONGO_URL provided - using MemoryStore for development only');
+  }
+}
+
+// Validate session secret in production
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('❌ FATAL: SESSION_SECRET is required in production');
+  process.exit(1);
 }
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  secret: process.env.SESSION_SECRET || 'development-session-secret-not-for-production',
   resave: false,
   saveUninitialized: false,
   store: sessionStore || undefined, // Use MemoryStore if no MongoDB
@@ -262,6 +274,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/calendar', ensureAuthenticated, calendarRoutes);
 app.use('/api/scheduling', ensureAuthenticated, schedulingRoutes);
+app.use('/api/pending-events', ensureAuthenticated, pendingEventsRoutes);
 
 // Debug route for listing all registered routes
 app.get('/api/debug/routes', (_req, res) => {
@@ -311,7 +324,19 @@ app.get('/api/debug/routes', (_req, res) => {
     { path: '/api/scheduling/confirm', methods: ['POST'], description: 'Confirm time slot selections' },
     { path: '/api/scheduling/suggestions', methods: ['GET'], description: 'Get pending events/suggestions' },
     { path: '/api/scheduling/suggestions/:eventId', methods: ['DELETE'], description: 'Clear/cancel pending event' },
-    { path: '/api/scheduling/health', methods: ['GET'], description: 'Scheduling bridge health check' }
+    { path: '/api/scheduling/health', methods: ['GET'], description: 'Scheduling bridge health check' },
+    
+    // Pending Events routes (require authentication)
+    { path: '/api/pending-events', methods: ['GET'], description: 'Get all pending events for user' },
+    { path: '/api/pending-events/bulk', methods: ['POST'], description: 'Create multiple pending events' },
+    { path: '/api/pending-events/:eventId', methods: ['DELETE'], description: 'Clear/cancel pending event' },
+    { path: '/api/pending-events/:eventId/scheduled', methods: ['PATCH'], description: 'Mark event as scheduled' },
+    { path: '/api/pending-events/blocked-slots', methods: ['GET'], description: 'Get blocked time slots' },
+    { path: '/api/pending-events/bulk-clear', methods: ['POST'], description: 'Clear multiple pending events' },
+    { path: '/api/pending-events/cleanup', methods: ['POST'], description: 'Clean up expired events' },
+    { path: '/api/pending-events/check-conflict', methods: ['POST'], description: 'Check time slot conflicts' },
+    { path: '/api/pending-events/stats', methods: ['GET'], description: 'Get pending events statistics' },
+    { path: '/api/pending-events/health', methods: ['GET'], description: 'Pending events health check' }
   ];
 
   res.json({

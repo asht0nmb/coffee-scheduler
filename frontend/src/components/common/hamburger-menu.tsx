@@ -51,9 +51,28 @@ export function HamburgerMenu({ className = '' }: HamburgerMenuProps) {
     router.push(href);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     setIsOpen(false);
-    // TODO: Implement sign out logic
+    try {
+      // Call the backend logout endpoint
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Redirect to home page after successful logout
+        router.push('/');
+      } else {
+        console.error('Logout failed:', response.statusText);
+        // Still redirect to home page even if logout call failed
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect to home page even if logout call failed
+      router.push('/');
+    }
   };
 
   const menuItems = [

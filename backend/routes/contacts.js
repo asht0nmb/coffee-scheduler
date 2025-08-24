@@ -9,27 +9,6 @@ const { contactRateLimit } = require('../middleware/rateLimiting');
 // Get all contacts for user
 router.get('/', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGO_URL) {
-      return res.json([
-        { 
-          id: '1', 
-          name: 'Sarah Chen', 
-          email: 'sarah@example.com', 
-          timezone: 'America/New_York', 
-          status: 'pending',
-          createdAt: new Date()
-        },
-        { 
-          id: '2', 
-          name: 'Marcus Johnson', 
-          email: 'marcus@example.com', 
-          timezone: 'Europe/London', 
-          status: 'slots_generated',
-          createdAt: new Date()
-        }
-      ]);
-    }
-
     const contacts = await Contact.find({ userId: req.session.user.id })
       .sort({ updatedAt: -1 });
 
@@ -58,20 +37,6 @@ router.post('/', ensureAuthenticated, contactRateLimit, validateContactData, asy
   }
 
   try {
-    if (!process.env.MONGO_URL) {
-      return res.json({
-        id: Date.now().toString(),
-        userId: req.session.user.id,
-        name,
-        email,
-        timezone,
-        status: 'pending',
-        notes: notes || '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-
     // Check if contact already exists
     const existingContact = await Contact.findOne({
       userId: req.session.user.id,
@@ -118,14 +83,6 @@ router.put('/:id', ensureAuthenticated, contactRateLimit, async (req, res) => {
 
     updates.updatedAt = new Date();
 
-    if (!process.env.MONGO_URL) {
-      return res.json({ 
-        id: req.params.id, 
-        ...updates, 
-        message: 'Contact updated (mock)' 
-      });
-    }
-
     const contact = await Contact.findOneAndUpdate(
       { _id: req.params.id, userId: req.session.user.id },
       updates,
@@ -147,10 +104,6 @@ router.put('/:id', ensureAuthenticated, contactRateLimit, async (req, res) => {
 // Delete contact
 router.delete('/:id', ensureAuthenticated, contactRateLimit, async (req, res) => {
   try {
-    if (!process.env.MONGO_URL) {
-      return res.json({ success: true, message: 'Contact deleted (mock)' });
-    }
-
     const contact = await Contact.findOneAndDelete({
       _id: req.params.id,
       userId: req.session.user.id
@@ -177,17 +130,6 @@ router.delete('/:id', ensureAuthenticated, contactRateLimit, async (req, res) =>
 // Get contact statistics
 router.get('/stats', ensureAuthenticated, async (req, res) => {
   try {
-    if (!process.env.MONGO_URL) {
-      return res.json({
-        total: 2,
-        pending: 1,
-        slotsGenerated: 1,
-        emailSent: 0,
-        scheduled: 0,
-        completed: 0
-      });
-    }
-
     const stats = await Contact.aggregate([
       { $match: { userId: req.session.user.id } },
       { 

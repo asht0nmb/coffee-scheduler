@@ -69,7 +69,14 @@ function EventsPageContent() {
         }
       } catch (error) {
         console.error('Failed to load events:', error);
-        // TODO: Show error toast or notification
+        // Set empty arrays to prevent infinite loading state
+        if (activeView === 'past') {
+          setPastEvents([]);
+        } else if (activeView === 'upcoming') {
+          setUpcomingEvents([]);
+        }
+        // Display user-friendly error message
+        alert('Failed to load events. Please try refreshing the page.');
       } finally {
         setIsLoadingEvents(false);
       }
