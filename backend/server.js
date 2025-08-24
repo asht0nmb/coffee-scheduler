@@ -140,7 +140,12 @@ app.get('/api/debug/session', (req, res) => {
     sessionKeys: req.session ? Object.keys(req.session) : [],
     debugTest: req.session.debugTest,
     cookies: req.headers.cookie ? 'present' : 'missing',
-    userAgent: req.headers['user-agent']
+    userAgent: req.headers['user-agent'],
+    // OAuth-specific debugging
+    hasTokens: !!req.session.tokens,
+    hasUser: !!req.session.user,
+    userEmail: req.session.user?.email,
+    isAuthenticated: !!(req.session.tokens && req.session.user)
   });
 });
 
