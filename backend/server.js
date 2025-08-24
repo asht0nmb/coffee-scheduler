@@ -24,17 +24,40 @@ const PORT = process.env.PORT || 5000;
 // ===============================
 // SESSION CONFIGURATION
 // ===============================
+
+// Debug MongoDB URLs available
+console.log('🔍 MongoDB Debug Info:');
+console.log('- MONGO_URL exists:', !!process.env.MONGO_URL);
+console.log('- MONGO_PUBLIC_URL exists:', !!process.env.MONGO_PUBLIC_URL);
+console.log('- MONGOHOST exists:', !!process.env.MONGOHOST);
+
+// Create session store with debugging
+const sessionStore = MongoStore.create({
+  mongoUrl: process.env.MONGO_URL,
+  dbName: 'coffee-scheduler-sessions',
+  collectionName: 'sessions',
+  ttl: 24 * 60 * 60, // 24 hours
+  touchAfter: 24 * 3600 // Lazy session update
+});
+
+// Add session store event listeners for debugging
+sessionStore.on('connected', () => {
+  console.log('✅ Session store connected to MongoDB');
+});
+
+sessionStore.on('error', (error) => {
+  console.error('❌ Session store connection error:', error);
+});
+
+sessionStore.on('disconnected', () => {
+  console.log('⚠️ Session store disconnected from MongoDB');
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URL,
-    dbName: 'coffee-scheduler-sessions',
-    collectionName: 'sessions',
-    ttl: 24 * 60 * 60, // 24 hours
-    touchAfter: 24 * 3600 // Lazy session update
-  }),
+  store: sessionStore,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
@@ -50,10 +73,21 @@ app.use(session({
 // MIDDLEWARE
 // ===============================
 
-// Handle session store connection errors
+// Session debugging middleware
 app.use((req, res, next) => {
+  // Log session details for debugging
+  if (req.path.includes('/auth/')) {
+    console.log(`🔍 Session Debug [${req.method} ${req.path}]:`, {
+      sessionId: req.sessionID,
+      hasSession: !!req.session,
+      sessionKeys: req.session ? Object.keys(req.session) : 'no session',
+      cookies: req.headers.cookie ? 'cookies present' : 'no cookies'
+    });
+  }
+  
+  // Handle session store connection errors
   if (!req.session) {
-    console.error('Session store unavailable');
+    console.error('❌ Session store unavailable');
     return res.status(503).json({ error: 'Session store unavailable' });
   }
   next();
@@ -84,6 +118,29 @@ app.get('/api/health', (_req, res) => {
     googleAuth: !!process.env.GOOGLE_CLIENT_ID,
     mongodb: mongoose.connection.readyState === 1,
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Temporary session debugging endpoint
+app.get('/api/debug/session', (req, res) => {
+  console.log('📊 Session Debug Endpoint Called');
+  
+  // Create test session data
+  if (!req.session.debugTest) {
+    req.session.debugTest = {
+      created: new Date().toISOString(),
+      random: Math.random().toString(36).substring(7)
+    };
+  }
+  
+  res.json({
+    message: 'Session debug information',
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    sessionKeys: req.session ? Object.keys(req.session) : [],
+    debugTest: req.session.debugTest,
+    cookies: req.headers.cookie ? 'present' : 'missing',
+    userAgent: req.headers['user-agent']
   });
 });
 

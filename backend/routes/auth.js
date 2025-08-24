@@ -7,7 +7,23 @@ const { upsertUser } = require('../middleware/auth');
 router.get('/google', (req, res) => {
   // Generate state for CSRF protection
   const state = Math.random().toString(36).substring(7);
+  
+  console.log('🚀 OAuth Initiation Debug:', {
+    generatedState: state,
+    sessionId: req.sessionID,
+    sessionExists: !!req.session,
+    sessionKeys: req.session ? Object.keys(req.session) : 'no session'
+  });
+  
+  // Store state in session
   req.session.state = state;
+  
+  // Verify state was stored
+  console.log('📝 State Storage Result:', {
+    storedState: req.session.state,
+    stateMatches: req.session.state === state,
+    sessionAfterStore: Object.keys(req.session)
+  });
   
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -16,7 +32,7 @@ router.get('/google', (req, res) => {
     state: state
   });
   
-  console.log('OAuth flow initiated');
+  console.log('OAuth flow initiated - redirecting to Google');
   res.redirect(authUrl);
 });
 
@@ -24,19 +40,45 @@ router.get('/google', (req, res) => {
 router.get('/google/callback', async (req, res) => {
   const { code, error, state } = req.query;
   
+  console.log('🔄 OAuth Callback Debug:', {
+    receivedState: state,
+    sessionId: req.sessionID,
+    sessionExists: !!req.session,
+    sessionKeys: req.session ? Object.keys(req.session) : 'no session',
+    storedState: req.session ? req.session.state : 'no session state',
+    hasCode: !!code,
+    hasError: !!error
+  });
+  
   if (error) {
+    console.error('OAuth error received:', error);
     return res.status(400).send(`OAuth error: ${error}`);
   }
   
   if (!code) {
+    console.error('No authorization code received');
     return res.status(400).send('No authorization code received');
   }
   
   // Verify state for CSRF protection
+  console.log('🔐 State Verification:', {
+    receivedState: state,
+    storedState: req.session.state,
+    statesMatch: state === req.session.state,
+    sessionStateType: typeof req.session.state,
+    receivedStateType: typeof state
+  });
+  
   if (state !== req.session.state) {
-    console.error('State mismatch - possible CSRF attack');
+    console.error('❌ State mismatch - possible CSRF attack', {
+      expected: req.session.state,
+      received: state,
+      sessionId: req.sessionID
+    });
     return res.status(400).send('Invalid state parameter');
   }
+  
+  console.log('✅ State verification passed');
   
   try {
     // Exchange code for tokens
