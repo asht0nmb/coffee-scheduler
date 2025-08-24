@@ -163,12 +163,12 @@ export class ContactsService {
         success: response.success,
         hasData: !!response.data,
         contactId: response.data?._id,
-        wasExisting: (response.data as Record<string, unknown>)?.wasExisting
+        wasExisting: (response.data as unknown as Record<string, unknown>)?.wasExisting
       });
       
       if (response.data) {
         // Handle case where existing contact was returned
-        const responseData = response.data as Record<string, unknown>;
+        const responseData = response.data as unknown as Record<string, unknown>;
         const contact = (responseData.contact as Contact) || response.data;
         
         // Clear cache to ensure fresh data on next fetch
