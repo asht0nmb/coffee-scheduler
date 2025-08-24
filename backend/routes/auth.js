@@ -196,11 +196,31 @@ router.get('/google/callback', async (req, res) => {
 
 // Check authentication status
 router.get('/status', (req, res) => {
-  res.json({
-    authenticated: !!(req.session.tokens && req.session.user),
+  const isAuthenticated = !!(req.session.tokens && req.session.user);
+  
+  console.log('📊 Auth Status Check:', {
+    sessionId: req.sessionID,
+    hasTokens: !!req.session.tokens,
+    hasUser: !!req.session.user,
+    isAuthenticated,
+    userEmail: req.session.user?.email,
+    sessionKeys: req.session ? Object.keys(req.session) : 'no session',
+    cookieExpires: req.session.cookie._expires
+  });
+
+  const response = {
+    authenticated: isAuthenticated,
     user: req.session.user || null,
     expiresAt: req.session.cookie._expires
+  };
+  
+  console.log('📤 Sending auth status response:', {
+    authenticated: response.authenticated,
+    hasUser: !!response.user,
+    userEmail: response.user?.email
   });
+
+  res.json(response);
 });
 
 // Logout
