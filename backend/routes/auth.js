@@ -223,7 +223,17 @@ router.get('/status', (req, res) => {
     isAuthenticated,
     userEmail: req.session.user?.email,
     sessionKeys: req.session ? Object.keys(req.session) : 'no session',
-    cookieExpires: req.session.cookie._expires
+    cookieExpires: req.session.cookie._expires,
+    // Enhanced cookie debugging
+    requestHeaders: {
+      cookie: req.headers.cookie || 'no cookie header',
+      origin: req.headers.origin,
+      referer: req.headers.referer
+    },
+    sessionStore: {
+      connected: !!req.sessionStore,
+      type: req.sessionStore?.constructor?.name || 'unknown'
+    }
   });
 
   const response = {

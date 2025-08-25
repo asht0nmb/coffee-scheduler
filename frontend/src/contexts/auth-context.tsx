@@ -54,7 +54,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLastCheckTime(now);
 
     try {
-      console.log('🔍 Checking auth status...');
+      console.log('🔍 Checking auth status...', {
+        apiUrl: config.apiUrl,
+        timestamp: new Date().toISOString(),
+        // Log available cookies (non-sensitive info only)
+        hasCookies: typeof document !== 'undefined' && document.cookie.length > 0
+      });
       setIsLoading(true);
       setError(null);
 
@@ -64,6 +69,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
+      });
+      
+      console.log('📡 Auth status request details:', {
+        url: `${config.apiUrl}/api/auth/status`,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (response.ok) {

@@ -1,0 +1,15 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js",
+  "/test-notifications/page": "app/test-notifications/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/dashboard/contacts/page": "app/dashboard/contacts/page.js",
+  "/dashboard/results/page": "app/dashboard/results/page.js",
+  "/dashboard/events/page": "app/dashboard/events/page.js",
+  "/dashboard/scheduling/page": "app/dashboard/scheduling/page.js",
+  "/dashboard/results/[id]/page": "app/dashboard/results/[id]/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/scheduling/[id]/page": "app/dashboard/scheduling/[id]/page.js",
+  "/dashboard/settings/page": "app/dashboard/settings/page.js"
+}

@@ -48,7 +48,10 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:5173',
       'https://localhost:3000', // HTTPS variants
-      'https://localhost:5173'
+      'https://localhost:5173',
+      // Add common Vercel deployment patterns
+      'https://coffee-scheduler-git-main-asht0nmbs-projects.vercel.app',
+      'https://coffee-scheduler-asht0nmbs-projects.vercel.app'
     ].filter(Boolean);
     
     console.log('🌐 CORS Origin Check:', {

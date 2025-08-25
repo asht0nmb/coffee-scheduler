@@ -72,23 +72,23 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
   process.exit(1);
 }
 
-// Production-optimized session configuration
+// Production-optimized session configuration for cross-origin deployment
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'development-session-secret-not-for-production',
   resave: false,
   saveUninitialized: false,
   store: sessionStore || undefined, // Use MemoryStore if no MongoDB
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // HTTPS required in production
     httpOnly: true,
-    // Use 'lax' for better compatibility with deployment platforms
-    sameSite: 'lax', 
+    // 'none' required for cross-origin cookies (Vercel frontend -> Railway backend)
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     // Let deployment platform handle domain automatically
     domain: undefined
   },
   name: 'sessionId',
-  proxy: process.env.NODE_ENV === 'production',
+  proxy: process.env.NODE_ENV === 'production', // Trust Railway proxy
   // Force session save on modifications
   rolling: true
 };
@@ -120,7 +120,14 @@ app.use((req, res, next) => {
       cookieHeader: req.headers.cookie ? req.headers.cookie.substring(0, 100) + '...' : 'none',
       userAgent: req.headers['user-agent'] ? req.headers['user-agent'].substring(0, 50) + '...' : 'none',
       origin: req.headers.origin || 'no origin',
-      referer: req.headers.referer || 'no referer'
+      referer: req.headers.referer || 'no referer',
+      // Add cookie-specific debugging
+      sessionCookieName: sessionConfig.name,
+      cookieSettings: {
+        secure: sessionConfig.cookie.secure,
+        sameSite: sessionConfig.cookie.sameSite,
+        httpOnly: sessionConfig.cookie.httpOnly
+      }
     });
     
     // Log authentication status
