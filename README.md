@@ -7,7 +7,7 @@
 
 ## Problem & Solution
 
-When scheduling coffee chats with multiple people, later contacts get progressively worse time slots. This app uses **intelligent batch allocation** to ensure everyone gets quality meeting times without conflicts—solving a problem that existing scheduling tools don't address.
+When scheduling coffee chats with multiple people, later contacts get progressively worse time slots. This app uses **intelligent batch allocation** to ensure everyone gets quality meeting times without conflicts, solving a problem that existing scheduling tools don't address.
 
 ## Features
 
