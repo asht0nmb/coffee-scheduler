@@ -31,12 +31,6 @@ When scheduling coffee chats with multiple people, later contacts get progressiv
 - Google Calendar API integration
 - Deployed on Railway (99.9% uptime)
 
-## Live Demo
-
-**Application**: *Frontend deployment in progress*  
-**API Endpoint**: https://backend-production-2104.up.railway.app  
-**Health Check**: https://backend-production-2104.up.railway.app/api/health
-
 ## Key Metrics
 
 - **26 RESTful API endpoints** with full validation
