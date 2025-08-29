@@ -2,7 +2,9 @@
 
 **An intelligent scheduling assistant that eliminates back-and-forth when coordinating 1:1 meetings across multiple people and timezones.**
 
+
 <img width="1285" height="718" alt="Screenshot 2025-08-29 at 1 41 58 AM" src="https://github.com/user-attachments/assets/6dbbd22d-592a-44de-ade4-876b8b5473c9" />
+
 ## Problem & Solution
 
 When scheduling coffee chats with multiple people, later contacts get progressively worse time slots. This app uses **intelligent batch allocation** to ensure everyone gets quality meeting times without conflicts—solving a problem that existing scheduling tools don't address.
