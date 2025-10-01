@@ -234,9 +234,9 @@ router.get('/test', async (req, res) => {
   }
 });
 
-// Get calendar events for a date range
+// Get calendar events for a date range - Returns app-created events (Coffee Scheduler events)
 router.get('/events', async (req, res) => {
-  console.log('📅 Calendar Events Request:', {
+  console.log('📅 Coffee Scheduler Events Request:', {
     path: req.path,
     query: req.query,
     hasAuth: !!req.oauth2Client,
@@ -245,9 +245,10 @@ router.get('/events', async (req, res) => {
   });
   
   try {
-    const { timeMin, timeMax, calendarId = 'primary', filter } = req.query;
+    const { timeMin, timeMax, filter } = req.query;
+    const userId = req.session.user.id;
     
-    // If no time parameters provided, default to a reasonable range
+    // Set up time range
     let startTime = timeMin;
     let endTime = timeMax;
     
@@ -259,20 +260,114 @@ router.get('/events', async (req, res) => {
       
       startTime = thirtyDaysAgo.toISOString();
       endTime = thirtyDaysFromNow.toISOString();
+    }
+
+    // Get Coffee Scheduler events (confirmed TentativeSlots)
+    let query = {
+      userId: userId,
+      status: 'confirmed',
+      'timeSlot.start': {
+        $gte: new Date(startTime),
+        $lte: new Date(endTime)
+      }
+    };
+
+    // Apply time-based filters
+    const now = new Date();
+    if (filter === 'upcoming') {
+      query['timeSlot.start'] = { $gt: now };
+    } else if (filter === 'past') {
+      query['timeSlot.end'] = { $lt: now };
+    }
+
+    console.log('🔍 Fetching Coffee Scheduler events with query:', {
+      userId,
+      filter,
+      timeRange: { startTime, endTime }
+    });
+
+    const tentativeSlots = await mongoose.models.TentativeSlot.find(query)
+      .populate('contactId', 'name email')
+      .sort({ 'timeSlot.start': filter === 'past' ? -1 : 1 });
+
+    console.log(`✅ Found ${tentativeSlots.length} Coffee Scheduler events`);
+
+    // Transform TentativeSlots to frontend Event format
+    const events = tentativeSlots.map(slot => {
+      const duration = Math.round((slot.timeSlot.end - slot.timeSlot.start) / (1000 * 60));
       
-      console.log('🕰️ Using default time range:', {
-        startTime,
-        endTime
-      });
+      return {
+        id: slot._id.toString(),
+        title: `Coffee Chat with ${slot.contactId?.name || 'Contact'}`,
+        participants: [slot.contactId?.name || slot.contactEmail],
+        date: slot.timeSlot.start,
+        status: filter === 'past' ? 'completed' : 'scheduled',
+        duration: duration,
+        finalTimeSlot: slot.displayTimes?.userTime || 
+          moment(slot.timeSlot.start).format('ddd h:mm A'),
+        type: 'coffee_chat',
+        createdAt: slot.createdAt,
+        updatedAt: slot.createdAt,
+        contactEmail: slot.contactEmail,
+        contactTimezone: slot.timeSlot.timezone,
+        // Additional metadata for frontend
+        addedToGoogleCal: slot.addedToGoogleCal,
+        googleCalEventId: slot.googleCalEventId
+      };
+    });
+    
+    console.log('📋 Returning Coffee Scheduler events:', {
+      filter,
+      totalEvents: events.length,
+      timeRange: { start: startTime, end: endTime }
+    });
+    
+    res.json({
+      events: events,
+      timeRange: {
+        start: startTime,
+        end: endTime
+      },
+      // Metadata to distinguish from Google Calendar events
+      source: 'coffee-scheduler',
+      eventCount: events.length
+    });
+  } catch (error) {
+    console.error('Get Coffee Scheduler events error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get Coffee Scheduler events',
+      details: error.message 
+    });
+  }
+});
+
+// Get Google Calendar events for availability checking (preserved functionality)
+router.get('/google-events', async (req, res) => {
+  console.log('📅 Google Calendar Events Request (for availability):', {
+    path: req.path,
+    query: req.query,
+    hasAuth: !!req.oauth2Client,
+    sessionId: req.sessionID,
+    userEmail: req.session?.user?.email
+  });
+  
+  try {
+    const { timeMin, timeMax, calendarId = 'primary' } = req.query;
+    
+    // Set default time range if not provided
+    let startTime = timeMin;
+    let endTime = timeMax;
+    
+    if (!timeMin || !timeMax) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+      
+      startTime = thirtyDaysAgo.toISOString();
+      endTime = thirtyDaysFromNow.toISOString();
     }
 
     const calendar = google.calendar({ version: 'v3', auth: req.oauth2Client });
-    
-    console.log('📞 Calling Google Calendar API with:', {
-      calendarId,
-      timeMin: startTime,
-      timeMax: endTime
-    });
     
     const response = await calendar.events.list({
       calendarId,
@@ -283,47 +378,24 @@ router.get('/events', async (req, res) => {
       maxResults: 100
     });
     
-    console.log('✅ Calendar API response received:', {
+    console.log('✅ Google Calendar API response received:', {
       eventCount: response.data.items?.length || 0,
       hasItems: !!response.data.items
     });
     
-    // Transform events based on filter
-    let events = response.data.items || [];
-    
-    if (filter) {
-      const now = new Date();
-      if (filter === 'upcoming') {
-        events = events.filter(event => {
-          const eventStart = new Date(event.start?.dateTime || event.start?.date);
-          return eventStart > now;
-        });
-      } else if (filter === 'past') {
-        events = events.filter(event => {
-          const eventStart = new Date(event.start?.dateTime || event.start?.date);
-          return eventStart < now;
-        });
-      }
-    }
-    
-    console.log('📋 Returning filtered events:', {
-      filter,
-      totalEvents: response.data.items?.length || 0,
-      filteredEvents: events.length
-    });
-    
     res.json({
-      events: events,
+      events: response.data.items || [],
       nextSyncToken: response.data.nextSyncToken,
       timeRange: {
         start: startTime,
         end: endTime
-      }
+      },
+      source: 'google-calendar'
     });
   } catch (error) {
-    console.error('Get events error:', error);
+    console.error('Get Google Calendar events error:', error);
     res.status(500).json({ 
-      error: 'Failed to get calendar events',
+      error: 'Failed to get Google Calendar events',
       details: error.message 
     });
   }
@@ -645,11 +717,33 @@ router.post('/schedule-batch', batchRateLimit, validateSchedulingRequest, async 
       const batchId = `batch_${new Date().getTime()}`;
       const batchResults = [];
 
-      // PERFORMANCE FIX: Fetch user's working hours ONCE outside the loop
+      // PERFORMANCE FIX: Fetch user's preferences ONCE outside the loop
       // Previous: 50+ queries for 50 contacts (N+1 pattern)
       // Current: 1 query total (98% reduction)
       const user = await User.findOne({ googleId: req.session.user.id });
-      const userWorkingHours = user?.workingHours || { start: 9, end: 17 };
+      
+      // Convert time strings to numbers for algorithm compatibility
+      const convertTimeToNumber = (timeStr) => {
+        if (typeof timeStr === 'number') return timeStr; // Legacy support
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours + (minutes / 60);
+      };
+      
+      const userWorkingHours = {
+        start: convertTimeToNumber(user?.workingHours?.start || '09:00'),
+        end: convertTimeToNumber(user?.workingHours?.end || '17:00')
+      };
+      
+      const userPreferences = {
+        defaultDuration: user?.preferences?.defaultDuration || 60,
+        weekendAvailability: user?.preferences?.weekendAvailability || false,
+        timezone: user?.timezone || 'America/Los_Angeles'
+      };
+      
+      console.log('👤 Using user preferences:', {
+        workingHours: userWorkingHours,
+        preferences: userPreferences
+      });
 
       // First pass: generate and score all possible slots for each contact
       const contactSlotOptions = [];
@@ -657,13 +751,17 @@ router.post('/schedule-batch', batchRateLimit, validateSchedulingRequest, async 
       for (const contact of contacts) {
         // Use cached userWorkingHours (no database query in loop)
 
+        // Use contact's preferred duration, fallback to user's default, fallback to 60
+        const meetingDuration = contact.meetingPreferences?.duration || 
+                               userPreferences.defaultDuration || 60;
+
         const availableSlots = generateAvailableSlots(
           allBusyTimes,
           { start, end },
           contact.timezone,
           userWorkingHours,
-          contact.meetingPreferences?.duration || 60,
-          14
+          meetingDuration,
+          userPreferences.weekendAvailability ? 7 : 5 // Include weekends if enabled
         );
 
         const contactPreferences = contact.meetingPreferences?.timeOfDay ? 
@@ -956,17 +1054,31 @@ router.post('/schedule-batch-advanced', batchRateLimit, validateSchedulingReques
       });
     });
 
-    // Prepare algorithm options
+    // Prepare algorithm options with user preferences
     const user = await User.findOne({ googleId: req.session.user.id });
+    
+    // Convert time strings to numbers for algorithm compatibility
+    const convertTimeToNumber = (timeStr) => {
+      if (typeof timeStr === 'number') return timeStr; // Legacy support
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours + (minutes / 60);
+    };
+    
     const algorithmOptions = {
       slotsPerContact,
       consultantMode,
-      userTimezone: req.session.user.timezone || 'America/Los_Angeles',
-      workingHours: user?.workingHours || { 
-        start: SCHEDULING_CONFIG.WORKING_HOURS_START, 
-        end: SCHEDULING_CONFIG.WORKING_HOURS_END 
-      }
+      userTimezone: user?.timezone || req.session.user.timezone || 'America/Los_Angeles',
+      workingHours: {
+        start: convertTimeToNumber(user?.workingHours?.start || '09:00'),
+        end: convertTimeToNumber(user?.workingHours?.end || '17:00')
+      },
+      // Additional user preferences for advanced algorithm
+      defaultDuration: user?.preferences?.defaultDuration || 60,
+      weekendAvailability: user?.preferences?.weekendAvailability || false,
+      emailNotifications: user?.preferences?.emailNotifications || true
     };
+    
+    console.log('🚀 Advanced algorithm using user preferences:', algorithmOptions);
 
     console.log(`Running advanced algorithm for ${algorithContacts.length} contacts...`);
 
