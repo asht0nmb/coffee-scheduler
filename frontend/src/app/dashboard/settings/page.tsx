@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,12 +46,13 @@ export default function SettingsPage() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<'account' | 'preferences' | 'advanced'>('account');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState('');
   
   const [settings, setSettings] = useState<UserSettings>({
     account: {
-      name: 'John Doe',
-      email: 'john.doe@gmail.com',
+      name: '',
+      email: '',
       loginNotifications: true
     },
     preferences: {
@@ -73,16 +74,67 @@ export default function SettingsPage() {
     }
   });
 
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/user/preferences', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📖 Loaded user settings:', data);
+          setSettings(data);
+        } else {
+          console.error('Failed to load settings:', response.statusText);
+          // Keep default settings if load fails
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        // Keep default settings if load fails
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('');
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      console.log('💾 Saving user settings:', settings);
+      
+      const response = await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(settings)
+      });
+
+      if (response.ok) {
+        const updatedSettings = await response.json();
+        console.log('✅ Settings saved successfully:', updatedSettings);
+        setSettings(updatedSettings);
+        setSaveMessage(APP_CONSTANTS.SUCCESS_SAVE);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to save settings:', errorData);
+        setSaveMessage('Failed to save settings. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setSaveMessage('Failed to save settings. Please try again.');
+    } finally {
       setIsSaving(false);
-      setSaveMessage(APP_CONSTANTS.SUCCESS_SAVE);
       setTimeout(() => setSaveMessage(''), 3000);
-    }, 1000);
+    }
   };
 
   const updateSetting = <T extends keyof UserSettings>(
@@ -117,6 +169,20 @@ export default function SettingsPage() {
     { key: 'preferences', label: 'Preferences', icon: '⚙️' },
     { key: 'advanced', label: 'Advanced', icon: '🔧' }
   ] as const;
+
+  // Show loading state while settings are being loaded
+  if (isLoading) {
+    return (
+      <div className="px-4 py-6 sm:px-0 max-w-4xl">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-neutral-600">Loading settings...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0 max-w-4xl">
